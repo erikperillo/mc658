@@ -1,0 +1,13 @@
+#ignore all
+*
+#unignore all with extensions
+!*.*
+#unignore all dirs
+!*/
+#makefile
+!Makefile
+
+#other stuff
+*.o
+*.swp
+~*
