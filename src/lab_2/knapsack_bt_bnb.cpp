@@ -3,21 +3,29 @@
  * Prof: Flavio Keidi Miyazawa
  * PED: Edson Ticona Zegarra
  ******************************************************/
-#include "knapsack.h"
-#include <map>
-#include <functional>
-
-static bool debug = true;
-
-#define str(x) #x
-#define pr(x) ({if(debug) {cout << str(x)": " << x << endl;}})
-#define prv(x) ({if(debug) {cout << str(x)": "; print_vec(x);}})
 
 ///Preencher aqui para facilitar a correcao.
 // Nome1: Erik de Godoy Perillo
 // RA1: 135582
 // Nome2:
 // RA2:
+
+#include "knapsack.h"
+#include <iostream>
+#include <algorithm>
+
+using namespace std;
+
+//debug flag
+static bool debug = true;
+//debug macros
+#define str(x) #x
+#define pr(x) ({if(debug) {cout << str(x)": " << x << endl;}})
+#define prv(x) ({if(debug) {cout << str(x)": "; print_vec(x);}})
+
+//counts iterations made in bnb
+static int bnb_counter = 0;
+
 ///
 // Bactracking function:
 ///
@@ -26,9 +34,7 @@ bool bt(int n, int d, int B, vector<int> &p, vector<int> &w, vector<int> &c,
 	return false;
 }
 
-#include <iostream>
-using namespace std;
-
+//debug function
 template <class T>
 void print_vec(vector<T> vec, bool nl=true)
 {
@@ -42,33 +48,11 @@ void print_vec(vector<T> vec, bool nl=true)
         cout << endl;
 }
 
-
-struct client
+//comparator for sorting to be used in branch and bound
+struct BBCompar
 {
-    client(int p, int w, int c, int d): p(p), w(w), c(c) {
-        rel_p = p/float(w+d);
-    }
-    int p;
-    int w;
-    int c;
-    float rel_p;
-    void print()
-    {
-        cout << "client p: " << p << " | w: " << w << " | c: " << c
-            << " | rel_p: " << rel_p << endl;
-    }
-};
-
-bool gt(const client& a, const client& b)
-{
-    return a.rel_p > b.rel_p;
-}
-#include <algorithm>
-
-struct compar
-{
-    compar(const vector<int>& p, const vector<int>& w, const vector<int>& c,
-        int d): p(p), w(w), c(c), d(d) {;}
+    BBCompar(const vector<int>& p, const vector<int>& w, const vector<int>& c):
+        p(p), w(w), c(c) {;}
 
     bool operator()(size_t i, size_t j) const
     {
@@ -78,9 +62,9 @@ struct compar
     const vector<int>& p;
     const vector<int>& w;
     const vector<int>& c;
-    int d;
 };
 
+//sequence [start, end]
 vector<int> seq(int start, int end)
 {
     vector<int> sequence;
@@ -89,6 +73,7 @@ vector<int> seq(int start, int end)
     return sequence;
 }
 
+//swap
 template <class T>
 void swap(T* a, T* b)
 {
@@ -97,6 +82,7 @@ void swap(T* a, T* b)
     *b = aux;
 }
 
+//gets new vector mapped to indexes
 template<class T>
 vector<T> map_to_indexes(const vector<T>& vec, const vector<int>& indexes)
 {
@@ -106,7 +92,8 @@ vector<T> map_to_indexes(const vector<T>& vec, const vector<int>& indexes)
     return mapped;
 }
 
-int value(const vector<int>& sol, const vector<int>& p, int k)
+//gets value of solution
+int get_value(const vector<int>& sol, const vector<int>& p, int k)
 {
     int val = 0;
     for(int i=0; i<=k; i++)
@@ -114,9 +101,9 @@ int value(const vector<int>& sol, const vector<int>& p, int k)
     return val;
 }
 
+//gets weight of solution
 int get_weight(int k, int d,
-    const vector<int>& sol,
-    const vector<int>& w, const vector<int>& c)
+    const vector<int>& sol, const vector<int>& w, const vector<int>& c)
 {
     int no_div_w = 0;
     set<int> classes;
@@ -131,142 +118,14 @@ int get_weight(int k, int d,
     return no_div_w + max(0, ((int)(classes.size())-1))*d;
 }
 
-/*template <class T>
-T min(T a, T b)
-{
-    return (a > b)?a:b;
-}*/
-
-static int bnb_counter = 0;
-
-set<int> get_classes_set(const vector<int>& c)
-{
-    set<int> classes;
-    for(int i=0; i<(int)c.size(); i++)
-        classes.insert(c[i]);
-    return classes;
-}
-
-bool promising2(int k, int n, int d, int B,
-    vector<int> &p, vector<int> &w, vector<int> &c,
-    vector<int> &sol, int best_val, int weight, int val)
-{
-    double best_rel_val = 0;
-    for(int i=k; i<n; i++)
-    {
-        best_rel_val = max(best_rel_val, p[i]/(double)w[i]);
-    }
-    int add_val = (int)((B - weight)*best_rel_val);
-
-    return (val + add_val) > best_val;
-}
-
-set<int> classes_in_sol(int k, const vector<int>& sol, const vector<int>& c)
-{
-    set<int> clases;
-
-    for(int i=0; i<k; i++)
-        if(sol[i])
-            clases.insert(c[i]);
-
-    return clases;
-}
-
-bool promising3(int k, int n, int d, int B,
-    vector<int> &p, vector<int> &w, vector<int> &c,
-    vector<int> &sol, int best_val, int weight, int val)
-{
-    int rem_val = 0;
-    int rem_w = 0;
-    set<int> cl = classes_in_sol(n, sol, c);
-    vector<float> rel_val(n-k, 0);
-    for(int i=0; i<n-k; i++)
-        if(cl.find(c[i]) == cl.end())
-            rel_val[i] = p[i]/(float)(w[i]+d);
-        else
-            rel_val[i] = p[i]/(float)w[i];
-    vector<bool> used(n-k, false);
-
-    int a = 0;
-    while(true)
-    {
-        bool all_used = true;
-        for(int i=0; i<n-k; i++)
-            if(!used[i])
-            {
-                all_used = false;
-                break;
-            }
-        if(all_used)
-            break;
-
-        float max_rel_val = -1;
-        int max_id = -1;
-
-        for(int i=0; i<n-k; i++)
-            if(!used[i] && rel_val[i] > max_rel_val)
-            {
-                max_rel_val = rel_val[i];
-                max_id = i;
-            }
-
-        used[max_id] = true;
-
-        cout << "a = " << a++ << endl;
-        bool is_new = false;
-        if(cl.find(c[max_id]) == cl.end())
-        {
-            is_new = true;
-            if(weight + rem_w + w[max_id] + d > B)
-                continue;
-            cl.insert(c[max_id]);
-            for(int j=0; j<n-k; j++)
-                if(c[j] == c[max_id])
-                    rel_val[j] = p[j]/(float)w[j];
-        }
-        else if(weight + rem_w + w[max_id] > B)
-            continue;
-
-        rem_w += w[max_id] + (is_new?d:0);
-        rem_val += p[max_id];
-    }
-
-    return (val + rem_val) > best_val;
-}
-
-inline bool promising(int k, int n, int d, int B,
-    vector<int> &p, vector<int> &w, vector<int> &c,
-    vector<int> &sol, int best_val, int weight, int val)
-{
-    int rem_val = 0;
-    int rem_weight = 0;
-    int i;
-    /*set<int> cl;
-    for(int i=0; i<n; i++)
-        if(sol[i] == 1)
-            cl.insert(c[i]);*/
-
-    for(i=k; i<n; i++)
-    {
-        int wi = w[i];
-
-        if(weight + rem_weight + wi <= B)
-        {
-            rem_val += p[i];
-            rem_weight += wi;
-            //cl.insert(c[i]);
-        }
-    }
-
-    return (val + rem_val) > best_val;
-}
-
-inline bool promising(int k, int n, int d, int B,
+//returns true iff branch is promising
+inline bool bnb_promising(int k, int n, int d, int B,
     const vector<int> &p, const vector<int> &w,
     int& weight, int& val,
     vector<int>& c_count, const vector<int>& c_hist, int& n_c,
     vector<int>& other_c, int& best_val)
 {
+    //counting classes used in/out current solution
     int used_c_rem = 0;
     int n_others = 0;
     for(int i=0; i<(int)c_count.size(); i++)
@@ -283,13 +142,15 @@ inline bool promising(int k, int n, int d, int B,
 
     int rem_val = 0;
     int rem_weight = 0;
-    int j=0;
+    int j = 0;
+    //using as much from already used classes as possible
     for(; (j+k)<n && j<used_c_rem; j++)
         if(weight + rem_weight + w[k+j] <= B)
         {
             rem_val += p[k+j];
             rem_weight += w[k+j];
         }
+    //using from other classes
     for(int m=0; m<n_others; m++)
     {
         rem_weight += (m == 0 && n_c == 0)?0:d;
@@ -307,9 +168,10 @@ inline bool promising(int k, int n, int d, int B,
     return val + rem_val > best_val;
 }
 
+//branch and bound recursive method
 void _bnb(
     int k, int n, int d, int B,
-    vector<int> &p, vector<int> &w, vector<int> &c,
+    const vector<int> &p, const vector<int> &w, const vector<int> &c,
     vector<int> &sol, int& weight, int& val,
     vector<int>& c_count, const vector<int>& c_hist, int& n_c,
     vector<int>& other_c,
@@ -317,22 +179,27 @@ void _bnb(
 {
     bnb_counter++;
 
+    //end of tree
     if(k == n)
         return;
 
+    //too heavy to continue
     if(weight > B)
         return;
 
+    //current solution is the best so far
     if(val > best_val)
     {
         best_val = val;
         best = sol;
-        cout << "BEST VAL = " << best_val << " ON LVL = " << k
-            << " (weight = " << weight << ", get_weight() = "
-            << get_weight(k, d, sol, w, c) << ")" << endl;
+        if(debug)
+            cout << "BEST VAL = " << best_val << " ON LVL = " << k
+                << " (weight = " << weight << ", get_weight() = "
+                << get_weight(k, d, sol, w, c) << ")" << endl;
     }
 
-    if(!promising(k, n, d, B, p, w, weight, val,
+    //checking if branch is promising
+    if(!bnb_promising(k, n, d, B, p, w, weight, val,
         c_count, c_hist, n_c, other_c, best_val))
         return;
 
@@ -346,7 +213,6 @@ void _bnb(
         p, w, c,
         sol, weight, val, c_count, c_hist, n_c, other_c,
         best, best_val, t);
-
     //excluding node
     sol[k] = 0;
     c_count[c[k]] -= 1;
@@ -362,8 +228,6 @@ void _bnb(
 ///
 // Branch and Bound function
 ///
-//
-//
 bool bnb(
     int n, int d, int B,
     vector<int> &p, vector<int> &w, vector<int> &c,
@@ -372,7 +236,7 @@ bool bnb(
     bnb_counter = 0;
     vector<int> sort_map = seq(0, n-1);
     vector<int> best(n, 0);
-    compar comparator(p, w, c, d);
+    BBCompar comparator(p, w, c);
     int best_val = 0;
     int weight = 0;
     int val = 0;
@@ -387,36 +251,35 @@ bool bnb(
     for(int i=0; i<n; i++)
         c_hist[c[i]]++;
 
+    //sorting by relative value
     sort(sort_map.begin(), sort_map.end(), comparator);
     p = map_to_indexes(p, sort_map);
     w = map_to_indexes(w, sort_map);
     c = map_to_indexes(c, sort_map);
 
+    //calling recursive auxiliar method
     _bnb(0, n, d, B,
         p, w, c,
         sol, weight, val, c_count, c_hist, n_c, c_other,
         best, best_val, t);
 
+    //setting solution
     sol = best;
 
-    cout << "counter: " << bnb_counter << " n: " << n << ", d: " << d
-        << ", B: " << B << endl;
-    cout << "weight: " << get_weight(n-1, d, best, w, c)
-        << ", val: " << value(sol, p, n-1) << endl;
+    if(debug)
+    {
+        cout << "counter: " << bnb_counter << " n: " << n << ", d: " << d
+            << ", B: " << B << endl;
+        cout << "weight: " << get_weight(n-1, d, best, w, c)
+            << ", val: " << get_value(sol, p, n-1) << endl;
+    }
 
     return true;
 }
 
-
-template <class T>
-T maxx(T a, T b)
-{
-    return (a > b)?a:b;
-}
-
+/*brute force solution used for debug
 static int bf_counter = 0;
 
-//brute force
 void _bf(int k, int n, int d, int B,
     vector<int> &p, vector<int> &w, vector<int> &c,
     vector<int> &sol, vector<int>& best, int t)
@@ -427,8 +290,8 @@ void _bf(int k, int n, int d, int B,
         return;
 
     int weight = get_weight(n-1, d, sol, w, c);
-    int val = value(sol, p, n-1);
-    int best_val = value(best, p, n-1);
+    int val = get_value(sol, p, n-1);
+    int best_val = get_value(best, p, n-1);
 
     if(weight <= B && val > best_val)
         best = sol;
@@ -455,8 +318,8 @@ bool bf(int n, int d, int B,
     cout << "counter: " << bf_counter << " n: " << n << ", d: " << d
         << ", B: " << B << endl;
     int weight = get_weight(n-1, d, best, w, c);
-    int val = value(best, p, n-1);
+    int val = get_value(best, p, n-1);
     cout << "weight: " << weight << ", val: " << val << endl;
 
     return true;
-}
+}*/
