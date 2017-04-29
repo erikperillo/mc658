@@ -5,7 +5,6 @@
  ******************************************************/
 #include "knapsack.h"
 #include <map>
-#include <functional>
 
 static bool debug = true;
 
@@ -261,58 +260,11 @@ inline bool promising(int k, int n, int d, int B,
     return (val + rem_val) > best_val;
 }
 
-inline bool promising(int k, int n, int d, int B,
-    const vector<int> &p, const vector<int> &w,
-    int& weight, int& val,
-    vector<int>& c_count, const vector<int>& c_hist, int& n_c,
-    vector<int>& other_c, int& best_val)
-{
-    int used_c_rem = 0;
-    int n_others = 0;
-    for(int i=0; i<(int)c_count.size(); i++)
-    {
-        if(c_count[i] > 0)
-            used_c_rem += (c_hist[i] - c_count[i]);
-        else if(c_hist[i] > 0)
-        {
-            other_c[n_others++] = c_hist[i];
-            for(int j=n_others-1; j>0 && other_c[j] > other_c[j-1]; j--)
-                swap(&other_c[j], &other_c[j-1]);
-        }
-    }
-
-    int rem_val = 0;
-    int rem_weight = 0;
-    int j=0;
-    for(; (j+k)<n && j<used_c_rem; j++)
-        if(weight + rem_weight + w[k+j] <= B)
-        {
-            rem_val += p[k+j];
-            rem_weight += w[k+j];
-        }
-    for(int m=0; m<n_others; m++)
-    {
-        rem_weight += (m == 0 && n_c == 0)?0:d;
-        //rem_weight += (it == other_c.begin() && n_c == 0)?0:d;
-        if(weight + rem_weight >= B)
-            break;
-        for(; (j+k)<n && j<other_c[m]; j++)
-            if(weight + rem_weight + w[k+j] <= B)
-            {
-                rem_val += p[k+j];
-                rem_weight += w[k+j];
-            }
-    }
-
-    return val + rem_val > best_val;
-}
-
+#include <set>
 void _bnb(
     int k, int n, int d, int B,
     vector<int> &p, vector<int> &w, vector<int> &c,
-    vector<int> &sol, int& weight, int& val,
-    vector<int>& c_count, const vector<int>& c_hist, int& n_c,
-    vector<int>& other_c,
+    vector<int> &sol, int& weight, int& val, vector<int>& c_count, int& n_c,
     vector<int>& best, int& best_val, int t)
 {
     bnb_counter++;
@@ -327,16 +279,20 @@ void _bnb(
     {
         best_val = val;
         best = sol;
-        cout << "BEST VAL = " << best_val << " ON LVL = " << k
-            << " (weight = " << weight << ", get_weight() = "
-            << get_weight(k, d, sol, w, c) << ")" << endl;
+        cout << "BEST VAL = " << best_val << " ON LVL = " << k << endl;
     }
 
-    if(!promising(k, n, d, B, p, w, weight, val,
-        c_count, c_hist, n_c, other_c, best_val))
+    int rem_val = 0;
+    int rem_weight = 0;
+    for(int i=k; i<n; i++)
+        if(weight + rem_weight + w[i] <= B)
+        {
+            rem_val += p[i];
+            rem_weight += w[i];
+        }
+    if(val + rem_val <= best_val)
         return;
 
-    //including node
     sol[k] = 1;
     weight += w[k] + ((c_count[c[k]] == 0 && n_c > 0)?d:0);
     n_c += (c_count[c[k]] == 0);
@@ -344,10 +300,9 @@ void _bnb(
     val += p[k];
     _bnb(k+1, n, d, B,
         p, w, c,
-        sol, weight, val, c_count, c_hist, n_c, other_c,
+        sol, weight, val, c_count, n_c,
         best, best_val, t);
 
-    //excluding node
     sol[k] = 0;
     c_count[c[k]] -= 1;
     n_c -= (c_count[c[k]] == 0);
@@ -355,10 +310,125 @@ void _bnb(
     val -= p[k];
     _bnb(k+1, n, d, B,
         p, w, c,
-        sol, weight, val, c_count, c_hist, n_c, other_c,
+        sol, weight, val, c_count, n_c,
         best, best_val, t);
 }
 
+int get_n_classes(const vector<int>& c)
+{
+    set<int> classes;
+    for(int i=0; i<(int)c.size(); i++)
+        classes.insert(c[i]);
+    return (int)classes.size();
+}
+
+
+void _bnb2(
+    int k, int n, int d, int B,
+    vector<int> &p, vector<int> &w, vector<int> &c,
+    vector<int> &sol, vector<int>& best, int& best_val, int t)
+{
+    //bnb_counter++;
+    int weight = 0;
+    int val = 0;
+    vector<int> c_count(n, 0);
+    int n_c = 0;
+
+    _bnb(0, n, d, B,
+        p, w, c,
+        sol, weight, val, c_count, n_c,
+        best, best_val, t);
+}
+
+vector<int> best_classes(int n,
+    const vector<int>& c, const vector<int>& p, const vector<int>& w)
+{
+    set<int> classes = get_classes_set(c);
+    map<int, double> rel_values;
+    vector<double> best_val;
+    vector<int> best_c;
+
+    for(set<int>::iterator it = classes.begin(); it != classes.end(); ++it)
+    {
+        int clase = *it;
+        int tot_val = 0;
+        int tot_w = 0;
+        for(int i=0; i<n; i++)
+            if(c[i] == clase)
+            {
+                tot_val += p[i];
+                tot_w += w[i];
+            }
+        double val = tot_val/(double)tot_w;
+
+        best_val.push_back(val);
+        best_c.push_back(clase);
+        for(int i=(int)best_c.size()-1; i>0 && best_val[i] > best_val[i-1]; i--)
+        {
+            swap(&best_val[i], &best_val[i-1]);
+            swap(&best_c[i], &best_c[i-1]);
+        }
+    }
+
+    for(int i=0; i<(int)best_c.size(); i++)
+        cout << "clase " << best_c[i] << ": " << best_val[i] << endl;
+
+    return best_c;
+}
+
+vector<int> clase_index2(int n, vector<int>& c, vector<int>& best_clases)
+{
+    vector<int> new_indexes(n, 0);
+
+    int pos = 0;
+    for(int i=0; i<(int)best_clases.size(); i++)
+    {
+        int clase = best_clases[i];
+        for(int j=0; j<n; j++)
+        {
+            if(c[j] == clase)
+                new_indexes[pos++] = j;
+        }
+    }
+
+    return new_indexes;
+}
+
+vector<int> clase_index(int n, const vector<int>& c)
+{
+    vector<bool> used(n, false);
+    vector<int> new_index(n, 0);
+    int n_classes = get_n_classes(c);
+    set<int> classes;
+    for(int i=0; i<n; i++)
+        classes.insert(c[i]);
+
+    for(int k=0; k<n; k++)
+    {
+        bool found = false;
+        set<int>::iterator it = classes.begin();
+        advance(it, k%n_classes);
+
+        while(!found)
+        {
+            int clase = *it;
+            for(int i=0; i<n; i++)
+                if(!used[i] && c[i] == clase)
+                {
+                    found = true;
+                    used[i] = true;
+                    new_index[k] = i;
+                    break;
+                }
+            advance(it, 1);
+            if(it == classes.end())
+                it = classes.begin();
+            //cout << "clase = " << clase << endl;
+        }
+    }
+
+    return new_index;
+}
 ///
 // Branch and Bound function
 ///
@@ -374,35 +444,39 @@ bool bnb(
     vector<int> best(n, 0);
     compar comparator(p, w, c, d);
     int best_val = 0;
-    int weight = 0;
-    int val = 0;
-    int max_c = 0;
-    int n_c = 0;
-    for(int i=0; i<n; i++)
-        if(c[i] > max_c)
-            max_c = c[i];
-    vector<int> c_count(max_c+2, 0);
-    vector<int> c_hist(max_c+2, 0);
-    vector<int> c_other(max_c+2, 0);
-    for(int i=0; i<n; i++)
-        c_hist[c[i]]++;
+    int n_classes = get_n_classes(c);
 
     sort(sort_map.begin(), sort_map.end(), comparator);
+    prv(p);
+    prv(w);
+    prv(c);
     p = map_to_indexes(p, sort_map);
     w = map_to_indexes(w, sort_map);
     c = map_to_indexes(c, sort_map);
+    cout << "1" << endl;
+    prv(p);
+    prv(w);
+    prv(c);
+    //vector<int> best_clases = best_classes(n, c, p, w);
+    /*vector<int> what = clase_index(n, c);
+    p = map_to_indexes(p, what);
+    w = map_to_indexes(w, what);
+    c = map_to_indexes(c, what);
+    cout << "2" << endl;
+    prv(p);
+    prv(w);
+    prv(c);*/
 
-    _bnb(0, n, d, B,
-        p, w, c,
-        sol, weight, val, c_count, c_hist, n_c, c_other,
-        best, best_val, t);
+    //_bnb(0, n, d, B, p, w, c, sol, best, best_val, t);
+    _bnb2(0, n, d, B, p, w, c, sol, best, best_val, t);
 
     sol = best;
 
     cout << "counter: " << bnb_counter << " n: " << n << ", d: " << d
         << ", B: " << B << endl;
-    cout << "weight: " << get_weight(n-1, d, best, w, c)
-        << ", val: " << value(sol, p, n-1) << endl;
+    int weight = get_weight(n-1, d, best, w, c);
+    int val = value(best, p, n-1);
+    cout << "weight: " << weight << ", val: " << val << endl;
 
     return true;
 }
