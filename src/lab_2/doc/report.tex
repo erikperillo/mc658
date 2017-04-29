@@ -1,0 +1,129 @@
+\documentclass[7pt]{article}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage[brazilian]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[backend=biber]{biblatex}
+\usepackage{csquotes}
+%\usepackage{docmute}
+\usepackage{array}
+\usepackage{multicol}
+\usepackage[bindingoffset=0.0in,%
+            left=0.9in,right=0.9in,top=0.5in,bottom=0.5in,%
+            voffset=0in,footskip=1.5in]{geometry}
+\usepackage{algorithm}
+\usepackage{titling}
+\usepackage[noend]{algpseudocode}
+\usepackage[T1]{fontenc}
+
+\addbibresource{report.bib}
+
+\newcommand{\fromeng}[1]{\footnote{do inglês: \textit{#1}}}
+\newcommand{\tit}[1]{\textit{#1}}
+\newcommand{\tbf}[1]{\textbf{#1}}
+\newcommand{\ttt}[1]{\texttt{#1}}
+
+\newcolumntype{C}[1]{>{\centering\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+
+%\setlength{\intextsep}{1.5pt}
+%\setlength{\textfloatsep}{-1in}
+
+\begin{document}
+
+%\newgeometry{margin=1in}
+
+\author{Erik Perillo, RA135582\\
+        Kelvin Ronny, RA138645}
+\date{\today}
+\title{%\vspace{-2cm}%
+	{\small MC658 - Projeto e análise de algoritmos III - Unicamp}\\
+    {\Large Laboratório 2 - Backtracking e Branch-and-Bound}
+%\subtitle{Lel}
+\maketitle\vspace{-0.5cm}
+\posttitle{\par\end{center}}
+
+\makeatletter
+\def\BState{\State\hskip-\ALG@thistlm}
+\makeatother
+
+\begin{multicols}{2}
+
+\section{Introdução}
+O desafio do Laboratório é resolver o problema do empacotamento com divisórias
+por meio de algoritmos de \tit{backtracking} e \tit{branch and bound},
+analisando quantitativamente seus desempenhos.
+
+\section{Backtracking}
+\tit{backtrack\_rec} é a função que faz recursão dentre as possibilidades de alocação de usuários na banda. Para isso, primeiro simulamos o que acontece se tentarmos colocar mais um usuário na banda. Então, usamos a função validator para validar a possibilidade.
+Se a possibilidade vale, testamos um backtracking para ela.
+Senão, apenas tentamos um backtracking sem o usuario, dada a solução candidata melhor até o momento.
+
+\section{Branch and Bound}
+A técnica branch and bound ordena todos os pacotes enfileirados e monta uma
+árvore com ramificação binária composta pela escolha (ou não) de um certo item.
+Um critério de poda preciso e uma mescla de busca em largura e profundidade
+foram obtidos em busca de uma rápida aproximação do valor ótimo.
+
+A ordenação é feita pelo valor relativo, do maior para o menor.
+O critério de poda usa dos seguintes fatos:
+Seja $K$ o conjunto de classes presentes na solução atual.
+Seja $r_K$ o número de pacotes cuja classe pertence ao conjunto $K$ mas não
+estão na solução atual.
+A melhor situação possível é que todos os $r_K$ primeiros pacotes (ordenados
+por valor relativo) ainda não presentes na solução tenham classe no conjunto
+$K$, pois isso evita a necessidade de uma divisória nova.
+Após usar todos esses pacotes, o melhor que pode acontecer é que os pacotes
+restantes, em ordem de valor relativo, pertençam respectivamente às
+classes $c_1$, $c_2$, ..., $c_k$, sendo o número de elementos da classe
+$c_1$ maior que o da $c_2$ e assim por diante.
+Esse cenário garante o menor uso de divisórias possível.
+Assim, o critério de pode assume esse cenário ideal e calcula o valor
+máximo que pode ser obtido pela ramificação.
+Se este ainda for menor que o atual máximo, não faz sentido continuar a
+busca naquele ramo e então é feita a poda.
+
+\tit{Iterative deepening depth-first search} (IDDFS) é feita para a parte
+mais ao topo da árvore com o objetivo de já obter uma boa aproximação
+do valor ótimo.
+Assim, começa-se da profundidade 1 e vai-se até um certo limite
+(definido aqui como duas vezes o número de classes).
+Essa heurística deu bons resultados na prática, mostrando um bom compromisso
+entre tempo e aproximação do valor ótimo.
+
+\ttt{bnb} implementa o algoritmo branch and bound. A rotina ordena os
+elementos por valor relativo e então chama \ttt{\_bnb}, rotina recursiva que
+faz a busca de fato dos valores.
+
+\section{Complexidade}
+O grafo foi implementado como uma lista de adjacências.
+As regiões a serem vigiadas foram implementadas como uma matriz binária, com
+1 se e só se o ponto $(i, j)$ é uma região alfa.
+Seja $V$ o número de vértices de um grafo e $E$ o número de arestas do mesmo e
+$l$ o número de linhas e $c$ o número de colunas da matriz das regiões.
+
+A linha 2 é simbólica pois na prática pode-se determinar qual o lado
+da bipartição de um nó só com valores booleanos.
+O \tit{loop} da linha 4 é basicamente uma iteração sobre cada ponto da matriz,
+checando ao seu redor para adjacências. O mapeamento de um ponto para um nó
+da linha 5 é feito em tempo constante com uma matriz de mapeamento.
+As linhas 8 e 9 checam se as arestas já estão no grafo de capacidades
+antes de adicioná-las. Isso é feito em tempo constante com um vetor.
+Assim, a transformação leva tempo $O(lc)$.
+A rede retornada é a entrada do algoritmo \ttt{EDMONDS-KARP} que foi
+implementado como esperado com \ttt{BFS} e então leva tempo $O(VE^2)$
+com $V, E$ das capacidades.
+Para se obter a resposta do problema original a partir do fluxo máximo,
+simplesmente calcula-se: $n = |C| - 2 - |f|$, onde $f, C$ são o fluxo e
+capacidade, respectivamente. O grafo de capacidades é construído de tal
+forma que ele tenha $lc + 2$ nós: pontos que não são adjacências simplesmente
+não se conectam a nada. Isso leva tempo constante.
+Assim, o tempo final do algoritmo é $O(lc + VE^2) = O(l^3c^3)$ pois
+$V, E = O(lc)$.
+
+\printbibliography
+
+\end{multicols}
+
+\end{document}

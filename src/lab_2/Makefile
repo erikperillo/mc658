@@ -1,5 +1,5 @@
 CC=g++
-CFLAGS=-I. -lstdc++
+CFLAGS=-I. -lstdc++ -O3
 DEPS = knapsack.h
 OBJ = knapsack.o knapsack_bt_bnb.o 
 

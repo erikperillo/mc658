@@ -5,9 +5,9 @@
  ******************************************************/
 
 ///Preencher aqui para facilitar a correcao.
-// Nome1: Erik de Godoy Perillo
+// Nome1: Erik de Godoy Perillo (branch and bound)
 // RA1: 135582
-// Nome2: Kelvin Ronny Marques da Silva
+// Nome2: Kelvin Ronny Marques da Silva (backtracking)
 // RA2: 138645
 
 #include "knapsack.h"
@@ -19,6 +19,7 @@ using namespace std;
 
 //debug flag/macros
 static bool debug = true;
+static bool debug2 = false;
 #define str(x) #x
 #define pr(x) ({if(debug) {cout << str(x)": " << x << endl;}})
 #define prv(x) ({if(debug) {cout << str(x)": "; print_vec(x);}})
@@ -149,9 +150,9 @@ bool bt(int n, int d, int B, vector<int> &p, vector<int> &w, vector<int> &c,
     {
         cout << "[bt] counter: " << bt_counter << " n: " << n << ", d: " << d
             << ", B: " << B << endl;
-        cout << "weight: " << get_weight(n-1, d, sol, w, c)
-            << ", val: " << get_value(sol, p, n-1)
-            << ", timeout: " << bt_timeout << endl;
+        cout << "weight=" << get_weight(n-1, d, sol, w, c) << endl;
+        cout << "timeout=" << bt_timeout << endl;
+        cout << "sol_value=" << get_value(sol, p, n-1) << endl;
     }
 
     return bt_timeout;
@@ -297,7 +298,7 @@ void _bnb(
     {
         best_val = val;
         best = sol;
-        if(debug)
+        if(debug2)
             cout << "[bb] BEST VAL = " << best_val << " ON LVL = " << k
                 << " (weight = " << weight << ", get_weight() = "
                 << get_weight(k, d, sol, w, c) << ")" << endl;
@@ -399,9 +400,9 @@ bool bnb(
     {
         cout << "[bb] counter: " << bnb_counter << " n: " << n << ", d: " << d
             << ", B: " << B << endl;
-        cout << "weight: " << get_weight(n-1, d, sol, w, c)
-            << ", val: " << get_value(sol, p, n-1)
-            << ", timeout: " << bnb_timeout << endl;
+        cout << "weight=" << get_weight(n-1, d, sol, w, c) << endl;
+        cout << "timeout=" << bnb_timeout << endl;
+        cout << "sol_value=" << get_value(sol, p, n-1) << endl;
     }
 
     return bnb_timeout;
