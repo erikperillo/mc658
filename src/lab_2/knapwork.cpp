@@ -233,7 +233,7 @@ bool promising3(int k, int n, int d, int B,
     return (val + rem_val) > best_val;
 }
 
-inline bool promising(int k, int n, int d, int B,
+bool promising(int k, int n, int d, int B,
     vector<int> &p, vector<int> &w, vector<int> &c,
     vector<int> &sol, int best_val, int weight, int val)
 {
@@ -264,13 +264,15 @@ inline bool promising(int k, int n, int d, int B,
 void _bnb(
     int k, int n, int d, int B,
     vector<int> &p, vector<int> &w, vector<int> &c,
-    vector<int> &sol, int& weight, int& val, vector<int>& c_count, int& n_c,
-    vector<int>& best, int& best_val, int t)
+    vector<int> &sol, vector<int>& best, int& best_val, int t)
 {
     bnb_counter++;
 
     if(k == n)
         return;
+
+    int weight = get_weight(n-1, d, sol, w, c);
+    int val = value(sol, p, n-1);
 
     if(weight > B)
         return;
@@ -282,38 +284,19 @@ void _bnb(
         cout << "BEST VAL = " << best_val << " ON LVL = " << k << endl;
     }
 
-    int rem_val = 0;
-    int rem_weight = 0;
-    for(int i=k; i<n; i++)
-        if(weight + rem_weight + w[i] <= B)
-        {
-            rem_val += p[i];
-            rem_weight += w[i];
-        }
-    if(val + rem_val <= best_val)
+    //int best_rem_val = (int)((B - weight)*(p[k]/float(w[k]+d)));
+    //if(val + best_rem_val <= best_val)
+     //   return;
+    if(!promising(k, n, d, B, p, w, c, sol, best_val, weight, val))
         return;
 
-    sol[k] = 1;
-    weight += w[k] + ((c_count[c[k]] == 0 && n_c > 0)?d:0);
-    n_c += (c_count[c[k]] == 0);
-    c_count[c[k]] += 1;
-    val += p[k];
-    _bnb(k+1, n, d, B,
-        p, w, c,
-        sol, weight, val, c_count, n_c,
-        best, best_val, t);
-
-    sol[k] = 0;
-    c_count[c[k]] -= 1;
-    weight -= w[k] + ((c_count[c[k]] == 0 && n_c > 0)?d:0);
-    n_c -= (c_count[c[k]] == 0);
-    val -= p[k];
-    _bnb(k+1, n, d, B,
-        p, w, c,
-        sol, weight, val, c_count, n_c,
-        best, best_val, t);
+    for(int pick=1; pick>=0; pick--)
+    {
+        sol[k] = pick;
+        //prv(sol);
+        _bnb(k+1, n, d, B, p, w, c, sol, best, best_val, t);
+    }
 }
-
 int get_n_classes(const vector<int>& c)
 {
     set<int> classes;
@@ -329,15 +312,36 @@ void _bnb2(
     vector<int> &sol, vector<int>& best, int& best_val, int t)
 {
     //bnb_counter++;
-    int weight = 0;
-    int val = 0;
-    vector<int> c_count(n, 0);
-    int n_c = 0;
 
-    _bnb(0, n, d, B,
-        p, w, c,
-        sol, weight, val, c_count, n_c,
-        best, best_val, t);
+    //_bnb(k, n, d, B, p, w, c, sol, best, best_val, t);
+    /*_bnb(0, n/16, d, B, p, w, c, sol, best, best_val, t);
+    for(int i=0; i<n; i++)
+        sol[i] = 0;
+    _bnb(0, n/8, d, B, p, w, c, sol, best, best_val, t);
+    for(int i=0; i<n; i++)
+        sol[i] = 0;*/
+    /*_bnb(0, n/10, d, B, p, w, c, sol, best, best_val, t);
+    for(int i=0; i<n; i++)
+        sol[i] = 0;*/
+    /*int n_classes = get_n_classes(c);
+    int step = n_classes;
+    for(int depth=1; depth<=32; depth+=1)
+    {
+        cout << "on depth = " << depth << endl;
+        _bnb(0, depth, d, B, p, w, c, sol, best, best_val, t);
+        for(int i=0; i<n; i++)
+            sol[i] = 0;
+    }
+    cout << "depth = " << 64 << endl;
+    _bnb(0, 64, d, B, p, w, c, sol, best, best_val, t);
+        for(int i=0; i<n; i++)
+            sol[i] = 0;
+    cout << "depth = " << 256 << endl;
+    _bnb(0, 256, d, B, p, w, c, sol, best, best_val, t);
+        for(int i=0; i<n; i++)
+            sol[i] = 0;
+    cout << "FINAL BOSS" << endl;*/
+    _bnb(0, n, d, B, p, w, c, sol, best, best_val, t);
 }
 
 vector<int> best_classes(int n,
