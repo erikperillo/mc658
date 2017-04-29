@@ -3,15 +3,12 @@
  * Prof: Flavio Keidi Miyazawa
  * PED: Edson Ticona Zegarra
  ******************************************************/
-
 #include "knapsack.h"
 #include<fstream>
 #include<iostream>
 #include<unistd.h>
 #include<cstring>
-
 using namespace std;
-
 vector<int> p;	//profit
 vector<int> w;	//widht
 vector<int> c;	//class
@@ -20,8 +17,6 @@ int n, d, B;	//number of items, Capacity of the knapsack
 int tMax;	//Maximum execution time, in seconds
 int aType;	//Algorithm type, 0:bt, 1:bnb
 vector <int> sol;
-vector <int> best;
-
 int main(int argc, char* argv[]){
 	tMax = 600;
 	aType = 0;
@@ -66,28 +61,14 @@ int main(int argc, char* argv[]){
 	if ( aType == 0 )
 		bt(n,d,B,p,w,c,sol,tMax);
 	else if ( aType == 1 )
-    {
-        /*cout << "brute force:" << endl;
-		bf(n,d,B,p,w,c,sol,tMax);
-        for(int i=0; i<n; i++)
-            cout << sol[i] << " ";
-        cout << endl;
-        cout << "----" << endl;*/
-        cout << "branch and bound:" << endl;
-        for(int i=0; i<n; i++)
-            sol[i] = 0;
 		bnb(n,d,B,p,w,c,sol,tMax);
-        for(int i=0; i<n; i++)
-            cout << sol[i] << " ";
-        cout << endl;
-        //for(int i=0; i<best.size(); i++)
-         //   cout << best[i] << " ";
-        //cout << endl;
-    }
 
 	if ( !is_feasible_solution() && verbose==1 )
 		cout << "Infeasible solution" << endl;
 	//std output
+	for(int i=0; i<n; i++)
+		cout << sol[i] << " ";
+	cout << endl;
 	return 0;
 }
 
@@ -100,7 +81,6 @@ int read_knapsack(string input_file){
 		kinput >> x >> y >> z;
 		p.push_back(x); w.push_back(y); c.push_back(z);
 		sol.push_back(0);	//The trivial solution, empty knapsack
-		best.push_back(0);	//The trivial solution, empty knapsack
 	}
 	return 1;
 }
