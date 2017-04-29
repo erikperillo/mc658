@@ -366,7 +366,7 @@ bool bnb(
     c = map_to_indexes(c, sort_map);
 
     //performing IDDFS
-    int iddfs_max_depth = min(2*max_c, n);
+    int iddfs_max_depth = min(max_c, n);
     for(int depth=1; depth<=iddfs_max_depth; depth++)
     {
         _bnb(0, depth, d, B,
@@ -375,7 +375,10 @@ bool bnb(
             best, best_val, (double)t);
         //resseting values
         for(int i=0; i<n; i++)
+        {
             sol[i] = 0;
+            best[i] = 0;
+        }
         for(int i=0; i<(int)c_count.size(); i++)
         {
             c_count[i] = 0;
