@@ -18,7 +18,7 @@
 using namespace std;
 
 //debug flag/macros
-static bool debug = true;
+static bool debug = false;
 static bool debug2 = false;
 #define str(x) #x
 #define pr(x) ({if(debug) {cout << str(x)": " << x << endl;}})
@@ -365,36 +365,11 @@ bool bnb(
     w = map_to_indexes(w, sort_map);
     c = map_to_indexes(c, sort_map);
 
-    //performing IDDFS
-    int iddfs_max_depth = min(max_c, n);
-    for(int depth=1; depth<=iddfs_max_depth; depth++)
-    {
-        _bnb(0, depth, d, B,
-            p, w, c,
-            sol, weight, val, c_count, c_hist, n_c, c_other,
-            best, best_val, (double)t);
-        //resseting values
-        for(int i=0; i<n; i++)
-        {
-            sol[i] = 0;
-            best[i] = 0;
-        }
-        for(int i=0; i<(int)c_count.size(); i++)
-        {
-            c_count[i] = 0;
-            c_other[i] = 0;
-        }
-        weight = 0;
-        val = 0;
-        n_c = 0;
-    }
-
     //calling recursive auxiliar method
-    if(n > iddfs_max_depth)
-        _bnb(0, n, d, B,
-            p, w, c,
-            sol, weight, val, c_count, c_hist, n_c, c_other,
-            best, best_val, (double)t);
+    _bnb(0, n, d, B,
+        p, w, c,
+        sol, weight, val, c_count, c_hist, n_c, c_other,
+        best, best_val, (double)t);
 
     //setting solution
     sol = best;

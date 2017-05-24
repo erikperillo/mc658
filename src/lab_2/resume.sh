@@ -2,7 +2,7 @@
 
 dir=$1
 
-echo "name,time_limit,sol_value,time_elapsed,timeout"
+echo "arquivo,tempo limite (s),valor solução,tempo (s),timeout"
 for _f in $(ls $dir/*.in | sort -n); do
     f=$(echo $_f | cut -f1 -d.)_bb.stats
     name=$(basename $_f)

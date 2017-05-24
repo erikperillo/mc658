@@ -1,6 +1,6 @@
-[bb] counter: 18 n: 5, d: 2, B: 20
-weight=0
+[bb] counter: 7 n: 5, d: 2, B: 20
+weight=20
 timeout=0
-sol_value=0
-0 0 0 0 0 
+sol_value=17
+1 1 1 0 0 
 time=0.002

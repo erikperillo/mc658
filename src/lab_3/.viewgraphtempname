@@ -1,0 +1,20 @@
+graph g {
+	node [
+shape = "ellipse",
+style = "bold",
+color = "black",
+];
+	r1 [style = "bold", color="blue", pos = "0.000000,18.016487!" , label="r1/13"];
+	r2 [style = "bold", color="blue", pos = "34.253028,20.087147!" , label="r2/12"];
+	t1 [style = "bold", color="red", pos = "18.135262,0.000000!" , label="t1/3"];
+	t2 [style = "bold", color="red", pos = "15.205249,40.000000!" , label="t2/8"];
+	t3 [style = "bold", color="red", pos = "17.202221,25.194818!" , label="t3/14"];
+	t1  -- r1 [label = "0/28", color="black" ];
+	t1  -- r2 [label = "0/2", color="black" ];
+	t2  -- r1 [label = "0/25", color="black" ];
+	t2  -- r2 [label = "0/19", color="black" ];
+	t3  -- r1 [label = "0/17", color="black" ];
+	t3  -- r2 [label = "0/12", color="black" ];
+label="examples/3_2.in";
+fontsize=50;
+}

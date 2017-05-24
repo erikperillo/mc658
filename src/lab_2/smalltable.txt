@@ -1,8 +1,8 @@
-name & time\_limit & sol\_value & time\_elapsed & timeout\\
+arquivo & tempo limite (s) & valor solução & tempo (s) & timeout\\
 \hline
-1000\_50\_800.in & 15 & 2177 & 16.008 & 1\\
+1000\_50\_800.in & 15 & 2177 & 16.012 & 1\\
 \hline
 100\_5\_500.in & 15 & 763 & 0.003 & 0\\
 \hline
-5\_2\_20.in & 15 & 0 & 0.002 & 0\\
+5\_2\_20.in & 15 & 17 & 0.002 & 0\\
 \hline

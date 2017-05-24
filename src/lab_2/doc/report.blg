@@ -1,9 +1,9 @@
 [0] Config.pm:354> INFO - This is Biber 2.6
 [0] Config.pm:357> INFO - Logfile is 'report.blg'
-[51] biber:302> INFO - === Sat Apr 29, 2017, 06:48:42
-[72] Biber.pm:359> INFO - Reading 'report.bcf'
-[208] Biber.pm:823> INFO - Found 0 citekeys in bib section 0
-[218] Utils.pm:164> WARN - The file 'report.bcf' does not contain any citations!
-[229] bbl.pm:597> INFO - Writing 'report.bbl' with encoding 'UTF-8'
-[229] bbl.pm:701> INFO - Output to report.bbl
-[229] Biber.pm:109> INFO - WARNINGS: 1
+[57] biber:302> INFO - === Sat Apr 29, 2017, 07:53:54
+[79] Biber.pm:359> INFO - Reading 'report.bcf'
+[211] Biber.pm:823> INFO - Found 0 citekeys in bib section 0
+[223] Utils.pm:164> WARN - The file 'report.bcf' does not contain any citations!
+[234] bbl.pm:597> INFO - Writing 'report.bbl' with encoding 'UTF-8'
+[235] bbl.pm:701> INFO - Output to report.bbl
+[235] Biber.pm:109> INFO - WARNINGS: 1
