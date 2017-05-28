@@ -4,9 +4,9 @@ from random import randint, sample, choice
 from itertools import product
 
 #number of terminals range
-t_lim = (1, 1000)
+t_lim = (1, 100)
 #number of routers range
-r_lim = (1, 1000)
+r_lim = (1, 100)
 #capacity range
 cap_lim = (1, 40)
 #cost range

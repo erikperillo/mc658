@@ -1,0 +1,68 @@
+\documentclass[7pt]{article}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage[brazilian]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[backend=biber]{biblatex}
+\usepackage{csquotes}
+%\usepackage{docmute}
+\usepackage{array}
+\usepackage{multicol}
+\usepackage[bindingoffset=0.0in,%
+            left=0.9in,right=0.9in,top=1.0in,bottom=1.0in,%
+            voffset=0in,footskip=1.5in]{geometry}
+\usepackage{algorithm}
+\usepackage{titling}
+\usepackage[noend]{algpseudocode}
+\usepackage[T1]{fontenc}
+
+\addbibresource{report.bib}
+
+\newcommand{\fromeng}[1]{\footnote{do inglês: \textit{#1}}}
+\newcommand{\tit}[1]{\textit{#1}}
+\newcommand{\tbf}[1]{\textbf{#1}}
+\newcommand{\ttt}[1]{\texttt{#1}}
+
+\begin{document}
+
+\author{\small Erik Perillo, RA135582}
+\date{\small \today}
+\title{\vspace{-2cm}%
+	{\small MC658 - Projeto e análise de algoritmos III - Unicamp}\\
+    {\Large \tbf{Laboratório 3 - Programação Linear}}}
+%\subtitle{Lel}
+\maketitle\vspace{-0.5cm}
+
+\begin{multicols}{2}
+
+\section{Formulação do Problema}
+O problema consiste em encontrar a melhor alocação possível de recursos entre
+roteadores e servidores.
+
+Para isso, considere um problema com
+um conjunto de terminais $T$ e tamanho $|T| = n_1$
+com requerimentos de banda $r_t$ para todo $t \in T$,
+um conjunto de roteadores $R$ e tamanho $|R| = n_2$
+com limites de banda $l_r$ para todo $r \in R$ e
+um conjunto de possíveis conexões $X$ com tamanho $|X| = m$
+com custo por unidade de banda $c_x$ para todo $x \in X$.
+
+Queremos minimizar o custo total das ligações:
+$$\ttt{min} z = \sum\nolimits_{x \in X}xc_x$$
+Sujeito a:
+\begin{itemize}
+    \item Cada terminal deve receber pelo menos uma certa quantidade de banda:
+        $$\sum\nolimits_{x \in Adj(t)}x \ge r_t, ~\forall~t \in T$$
+
+    \item Cada roteador pode fornecer no máximo uma certa quantidade de banda:
+        $$\sum\nolimits_{x \in Adj(r)}x \le l_t, ~\forall~r \in R$$
+
+    \item Os valores são não-negativos:
+        $$x \ge 0, ~\forall~x \in X$$
+\end{itemize}
+
+\end{multicols}
+
+\end{document}

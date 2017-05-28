@@ -69,6 +69,12 @@ int main(int argc, char* argv[]){
 
 	for ( ListBpGraph::EdgeIt e(g); e!=INVALID; ++e )
 		std::cout << node_names[g.u(e)] << " " << node_names[g.v(e)] << " " << sol[e] << std::endl;
+
+    int ccost = 0;
+	for ( ListBpGraph::EdgeIt e(g); e!=INVALID; ++e )
+        ccost += sol[e]*c[e];
+    cout << "cost = " << ccost << endl;
+
 	return 0;
 }
 

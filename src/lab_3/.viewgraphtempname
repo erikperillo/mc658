@@ -10,11 +10,11 @@ color = "black",
 	t2 [style = "bold", color="red", pos = "15.205249,40.000000!" , label="t2/8"];
 	t3 [style = "bold", color="red", pos = "17.202221,25.194818!" , label="t3/14"];
 	t1  -- r1 [label = "0/28", color="black" ];
-	t1  -- r2 [label = "0/2", color="black" ];
+	t1  -- r2 [label = "3/2", color="green" ];
 	t2  -- r1 [label = "0/25", color="black" ];
-	t2  -- r2 [label = "0/19", color="black" ];
-	t3  -- r1 [label = "0/17", color="black" ];
-	t3  -- r2 [label = "0/12", color="black" ];
+	t2  -- r2 [label = "8/19", color="green" ];
+	t3  -- r1 [label = "13/17", color="green" ];
+	t3  -- r2 [label = "1/12", color="green" ];
 label="examples/3_2.in";
 fontsize=50;
 }

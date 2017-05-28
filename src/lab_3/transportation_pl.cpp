@@ -7,39 +7,38 @@
 #include <lemon/lp.h>
 
 /*
- * OBS: Fiz sozinho, entao fiz duas funcoes uma pro lemon e outra pro gurobi.
  * Nome: Erik de Godoy Perillo
  * RA:   135582
+ * Versao do gurobi usada: 7.0.2
  */
 
 using namespace lemon;
 using namespace std;
 
-//use lemon if true, use gurobi if false
-const static bool use_lemon = true;
-
 /*
- * Solving the problem using Gurobi.
+ * Solving the problem.
  */
-bool pl_gurobi(
+bool pl(
     ListBpGraph& g,                 //graph
     ListBpGraph::EdgeMap<int> &c,   //costs of edges
     ListBpGraph::NodeMap<int> &v,   //requirements/capacities of nodes
     ListBpGraph::EdgeMap<int> &sol, //solution
     int tMax)                       //maximum time
 {
-    //creating env and model
+    //creating and setting up env
 	GRBEnv env = GRBEnv();
-	GRBModel model = GRBModel(env);
+    env.set(GRB_DoubleParam_TimeLimit, (double)tMax);
 
-    //setting up model/env
-	env.set(GRB_DoubleParam_TimeLimit, tMax);
-	model.set(GRB_StringAttr_ModelName, "pl_gurobi");
-	model.set(GRB_IntAttr_ModelSense, GRB_MINIMIZE);
+    //creating and setting up model
+	GRBModel model = GRBModel(env);
+    model.set(GRB_StringAttr_ModelName, "pl_gurobi");
+    model.set(GRB_IntAttr_ModelSense, GRB_MINIMIZE);
+
+    //variables of lp, mapping edges to values used in solution
+    ListBpGraph::EdgeMap<GRBVar> x(g);
 
     //creating vars with cost
     int i = 0;
-    ListBpGraph::EdgeMap<GRBVar> x(g);
     for(ListBpGraph::EdgeIt e(g); e!=INVALID; ++e)
         x[e] = model.addVar(
             0, GRB_INFINITY, c[e], GRB_CONTINUOUS, "E_" + to_string(i++));
@@ -65,91 +64,11 @@ bool pl_gurobi(
     //optimizing
     model.optimize();
 
-    //writing solution to sol if found one and returning
-    if(model.get(GRB_IntAttr_Status) == GRB_OPTIMAL)
-    {
+    //writing solution to sol if found one
+    if(model.get(GRB_IntAttr_SolCount) > 0)
         for(ListBpGraph::EdgeIt e(g); e!=INVALID; ++e)
             sol[e] = (int)x[e].get(GRB_DoubleAttr_X);
-        return true;
-    }
-    else
-        return false;
-}
 
-/*
- * Solving the problem using Lemon.
- */
-bool pl_lemon(
-    ListBpGraph& g,                 //graph
-    ListBpGraph::EdgeMap<int> &c,   //costs of edges
-    ListBpGraph::NodeMap<int> &v,   //requirements/capacities of nodes
-    ListBpGraph::EdgeMap<int> &sol, //solution
-    int tMax)                       //maximum time
-{
-    //model
-    Lp lp;
-
-    //objetive function
-    Lp::Expr obj = 0;
-    //vars with cost
-    ListBpGraph::EdgeMap<Lp::Col> x(g);
-    //creating vars and objective function
-    for(ListBpGraph::EdgeIt e(g); e!=INVALID; ++e)
-    {
-        //setting up var
-        x[e] = lp.addCol();
-        lp.colLowerBound(x[e], 0);
-        lp.colUpperBound(x[e], Lp::INF);
-        //objective function
-        obj += c[e]*x[e];
-    }
-
-    //setting constraints
-    for(ListBpGraph::NodeIt n(g); n!=INVALID; ++n)
-    {
-        Lp::Expr flow = 0;
-        bool in_t = false;
-
-        for(ListBpGraph::IncEdgeIt e(g, n); e!=INVALID; ++e)
-        {
-            in_t = g.u(e) == n;
-            flow += x[e];
-        }
-
-        if(in_t)
-            lp.addRow(flow >= v[n]);
-        else
-            lp.addRow(flow <= v[n]);
-    }
-
-    //solving
-    lp.min();
-    lp.obj(obj);
-    lp.solve();
-
-    //writing solution to sol if found one and returning
-    if(lp.primalType() == Lp::OPTIMAL)
-    {
-        for(ListBpGraph::EdgeIt e(g); e!=INVALID; ++e)
-            sol[e] = (int)lp.primal(x[e]);
-        return true;
-    }
-    else
-        return false;
-}
-
-///
-// PL function
-///
-bool pl(
-    ListBpGraph& g,                 //graph
-    ListBpGraph::EdgeMap<int> &c,   //costs of edges
-    ListBpGraph::NodeMap<int> &v,   //requirements/capacities of nodes
-    ListBpGraph::EdgeMap<int> &sol, //solution
-    int tMax)                       //maximum time
-{
-    if(use_lemon)
-        return pl_lemon(g, c, v, sol, tMax);
-    else
-        return pl_gurobi(g, c, v, sol, tMax);
+    //returning status
+    return (model.get(GRB_IntAttr_Status) == GRB_OPTIMAL);
 }
