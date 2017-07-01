@@ -5,6 +5,7 @@
  ******************************************************/
 
 #include "prizecollectingpath.h"
+#include <limits>
 
 /*
  * Nome: Erik de Godoy Perillo
@@ -21,6 +22,46 @@ enum
     //heuristic solution found
     HEUR_SOL=2
 };
+
+/*
+ * Simple heuristic for lower-bounding PLI: DFS from s to t
+ */
+double _pcstp_pli_cutoff(
+    ListDigraph& g, //directed graph
+    ListDigraph::NodeMap<bool>& visited, //prizes on nodes
+    ListDigraph::NodeMap<double>& prize, //prizes on nodes
+    ListDigraph::ArcMap<double>& cost, //costs of arcs
+    ListDigraph::Node& s, ListDigraph::Node& t) //source/dest nodes
+{
+    visited[s] = true;
+
+    if(s == t)
+        return prize[t];
+
+    double lb = -(numeric_limits<double>::max()/2);
+    for(ListDigraph::OutArcIt a(g, s); a!=INVALID; ++a)
+    {
+        ListDigraph::Node v = g.target(a);
+        if(!visited[v])
+        {
+            double v_lb = _pcstp_pli_cutoff(g, visited, prize, cost, v, t);
+            lb = max(lb, v_lb - cost[a] + prize[v]);
+        }
+    }
+
+    return lb;
+}
+double pcstp_pli_cutoff(
+    ListDigraph& g, //directed graph
+    ListDigraph::NodeMap<double>& prize, //prizes on nodes
+    ListDigraph::ArcMap<double>& cost, //costs of arcs
+    ListDigraph::Node& s, ListDigraph::Node& t) //source/dest nodes
+{
+    ListDigraph::NodeMap<bool> visited(g);
+    for(ListDigraph::NodeIt v(g); v!=INVALID; ++v)
+        visited[v] = false;
+    return max(0.0, _pcstp_pli_cutoff(g, visited, prize, cost, s, t));
+}
 
 /*
  * PLI solution
@@ -107,6 +148,11 @@ int prize_collecting_st_path_pli(
         obj -= x_a[a]*cost[a];
     model.setObjective(obj, GRB_MAXIMIZE);
 
+    //setting lower bound with simple heuristic
+    LB = pcstp_pli_cutoff(g, prize, cost, s, t);
+    //setting cutoff for lower bound
+    model.set(GRB_DoubleParam_Cutoff, LB);
+
     //optimizing
     model.optimize();
 
@@ -114,8 +160,10 @@ int prize_collecting_st_path_pli(
         return NO_SOL;
 
     //setting bounds
-    LB = 0;
     UB = model.get(GRB_DoubleAttr_ObjBoundC);
+
+    //debug
+    cout << "LB: " << LB << " | UB: " << UB << endl;
 
     //returning status
     if(model.get(GRB_IntAttr_Status) == GRB_OPTIMAL)
