@@ -39,6 +39,9 @@ typedef pair<ListDigraph::Arc, double> arc_cost_pair;
 //number of iterations of local search
 #define HEUR_MAX_N_LOC_SEARCH_ITS 3
 
+//print debug messages iff true
+const bool debug = true;
+
 /*
  * Cost of arc (u, v) = prize(v) - cost((u, v))
  */
@@ -112,9 +115,8 @@ class ArcCompar
 };
 
 /*
- * Makes random greedy choice of next arc for DFSjjj
- * It performs DFS from s to t and the next node to be searched is selected
- * by a random-greedy method.
+ * Makes random greedy choice of next arc for random-greedy solution generator.
+ * Selects and arc with (normalized) probability proportional to its cost.
  */
 int rand_greedy_choice(
     const vector<arc_cost_pair>& arc_cost_pairs, int start_index)
@@ -123,7 +125,7 @@ int rand_greedy_choice(
     static uniform_real_distribution<double> unif(0.0, 1.0);
     static default_random_engine rand;
 
-    //roulette method for selecting
+    //cost sum for normalization
     double cost_sum = 0.0;
     for(int i=start_index; i<static_cast<int>(arc_cost_pairs.size()); i++)
         cost_sum += arc_cost_pairs[i].second;
@@ -131,6 +133,7 @@ int rand_greedy_choice(
     if(cost_sum == 0)
         return start_index;
 
+    //roulette method for selecting index of next arc
     double cum_prob = 0.0;
     double r = unif(rand);
     for(int i=start_index; i<static_cast<int>(arc_cost_pairs.size()); i++)
@@ -144,15 +147,17 @@ int rand_greedy_choice(
 }
 
 /*
- * Simple heuristic for lower-bounding PLI: DFS from s to t
+ * Random-greedy solution generator for GRASP method.
+ * It performs a DFS from s to t, choosing the next arc to be used for node
+ * discovery with prob. proportional to the arc's cost (via arc_cost method).
  */
 bool _rand_greedy_sol(
-    ListDigraph& g, //directed graph
-    ListDigraph::NodeMap<bool>& visited, //prizes on nodes
-    ListDigraph::NodeMap<double>& prize, //prizes on nodes
-    ListDigraph::ArcMap<double>& cost, //costs of arcs
+    ListDigraph& g,
+    ListDigraph::NodeMap<bool>& visited,
+    ListDigraph::NodeMap<double>& prize,
+    ListDigraph::ArcMap<double>& cost,
     vector<ListDigraph::Arc>& path,
-    ListDigraph::Node& s, ListDigraph::Node& t) //source/dest nodes
+    ListDigraph::Node& s, ListDigraph::Node& t)
 {
     //marking node as visited
     visited[s] = true;
@@ -164,10 +169,10 @@ bool _rand_greedy_sol(
     //making pairs arc-cost for each arc in out-adj list of s
     vector<arc_cost_pair> arcs_costs = make_arc_cost_pairs(s, g, prize, cost);
 
-    //selecting order of adj nodes to be visited in random-greedy style:
-    //an arc a is selected with (normalized) probability arc_cost(a)
+    //selecting order of adj nodes to be visited in random-greedy style
     for(int i=0; i<static_cast<int>(arcs_costs.size()); i++)
     {
+        //index random-greedy selection
         int index = rand_greedy_choice(arcs_costs, i);
         ListDigraph::Node v = g.target(arcs_costs[index].first);
 
@@ -178,23 +183,31 @@ bool _rand_greedy_sol(
             return true;
         }
 
+        //excluding selected arc for next selection if needed
         if(i != index)
             iter_swap(arcs_costs.begin()+i, arcs_costs.begin()+index);
     }
 
+    //did not find t via current path
     return false;
 }
 
+/*
+ * Random-greedy solution generator for GRASP method.
+ * frontend of _rand_greedy_sol method.
+ */
 vector<ListDigraph::Arc> rand_greedy_sol(
     ListDigraph& g,
-    ListDigraph::NodeMap<double>& prize, //prizes on nodes
-    ListDigraph::ArcMap<double>& cost, //costs of arcs
-    ListDigraph::Node& s, ListDigraph::Node& t) //source/dest nodes
+    ListDigraph::NodeMap<double>& prize,
+    ListDigraph::ArcMap<double>& cost,
+    ListDigraph::Node& s, ListDigraph::Node& t)
 {
+    //marking nodes as not visited for DFS
     ListDigraph::NodeMap<bool> visited(g);
     for(ListDigraph::NodeIt v(g); v!=INVALID; ++v)
         visited[v] = false;
 
+    //computing solution
     vector<ListDigraph::Arc> path;
     _rand_greedy_sol(g, visited, prize, cost, path, s, t);
     reverse(path.begin(), path.end());
@@ -202,12 +215,18 @@ vector<ListDigraph::Arc> rand_greedy_sol(
     return path;
 }
 
+/*
+ * Local search for GRASP method.
+ * For each arc (u, v) of the random-greedy solution, it searches for arcs
+ * (u, w), (w, v) with better costs (via arc_cost method).
+ */
 vector<ListDigraph::Arc> _local_search(
     const vector<ListDigraph::Arc>& sol,
     const ListDigraph& g,
     const ListDigraph::NodeMap<double>& prize,
     const ListDigraph::ArcMap<double>& cost)
 {
+    //marking used nodes (they cannot be used)
     ListDigraph::NodeMap<bool> used(g);
     for(ListDigraph::NodeIt v(g); v!=INVALID; ++v)
         used[v] = false;
@@ -221,6 +240,7 @@ vector<ListDigraph::Arc> _local_search(
 
     vector<ListDigraph::Arc> path;
 
+    //for each arc (u, v) in solution...
     for(const auto& a: sol)
     {
         double best_cost = arc_cost(a, g, prize, cost);
@@ -229,6 +249,7 @@ vector<ListDigraph::Arc> _local_search(
         ListDigraph::Node u = g.source(a);
         ListDigraph::Node v = g.target(a);
 
+        //for each node adjacent to u...
         for(ListDigraph::OutArcIt au(g, u); au!=INVALID; ++au)
         {
             ListDigraph::Node w = g.target(au);
@@ -236,6 +257,7 @@ vector<ListDigraph::Arc> _local_search(
             if(used[w])
                 continue;
 
+            //check if it connects to v...
             for(ListDigraph::OutArcIt aw(g, w); aw!=INVALID; ++aw)
             {
                 ListDigraph::Node x = g.target(aw);
@@ -243,6 +265,7 @@ vector<ListDigraph::Arc> _local_search(
                 if(x != v)
                     continue;
 
+                //checks if cost of (u, w) + (w, v) is better
                 double cst = arc_cost(au, g, prize, cost)
                     + arc_cost(aw, g, prize, cost);
                 if(cst > best_cost)
@@ -254,6 +277,7 @@ vector<ListDigraph::Arc> _local_search(
             }
         }
 
+        //updating path
         path.push_back(fst);
         if(fst != snd)
         {
@@ -266,6 +290,11 @@ vector<ListDigraph::Arc> _local_search(
     return path;
 }
 
+/*
+ * Local search for GRASP method. Frontend of _local_search.
+ * Performs _local_search main method n_its times, or stops before if solution
+ * doesn't get better.
+ */
 vector<ListDigraph::Arc> local_search(
     const vector<ListDigraph::Arc>& sol,
     const ListDigraph& g,
@@ -273,59 +302,32 @@ vector<ListDigraph::Arc> local_search(
     const ListDigraph::ArcMap<double>& cost,
     int n_its)
 {
+    //initial cost
     double best_cost = -INF;
     vector<ListDigraph::Arc> ls_sol = sol;
 
+    //iterating n_its times using _local_search method
     for(int i=0; i<n_its; i++)
     {
         ls_sol = _local_search(ls_sol, g, prize, cost);
 
+        //if cost doesn't get better, stop
         double cst = path_cost(ls_sol, g, prize, cost);
         if(cst > best_cost)
             best_cost = cst;
         else
             break;
-        cout << "\tlocal_search: " << cst << endl;
+
+        if(debug)
+            cout << "\tlocal_search::iter " << i+1 << ": cost: " << cst << endl;
     }
 
     return ls_sol;
 }
 
-/*void _dfs(
-    ListDigraph& g, //directed graph
-    ListDigraph::NodeMap<bool>& visited, //prizes on nodes
-    ListDigraph::ArcMap<GRBVar>& x_a,
-    ListDigraph::NodeMap<GRBVar>& x_v,
-    ListDigraph::Node& s, ListDigraph::Node& t) //source/dest nodes
-{
-    //marking node as visited
-    visited[s] = true;
-
-    for(ListDigraph::OutArcIt a(g, s); a!=INVALID; ++a)
-    {
-        ListDigraph::Node v = g.target(a);
-        if(!visited[v] && x_v[v].get(GRB_DoubleAttr_X) > 0.5
-            && x_a[a].get(GRB_DoubleAttr_X) > 0.5)
-            _dfs(g, visited, x_a, x_v, v, t);
-    }
-}
-
-bool dfs(ListDigraph& g,
-    ListDigraph::ArcMap<GRBVar>& x_a,
-    ListDigraph::NodeMap<GRBVar>& x_v,
-    ListDigraph::Node& s, ListDigraph::Node& t)
-{
-    ListDigraph::NodeMap<bool> visited(g);
-    for(ListDigraph::NodeIt v(g); v!=INVALID; ++v)
-        visited[v] = false;
-    _dfs(g, visited, x_a, x_v, s, t);
-    int c = 0;
-    for(ListDigraph::NodeIt v(g); v!=INVALID; ++v)
-        c += visited[v];
-    cout << "c = " << c << endl;
-    return visited[t];
-}*/
-
+/*
+ * Gets arcs of path s-t (in order) from PLI solution.
+ */
 vector<ListDigraph::Arc> arc_path_from_pli_sol(
     ListDigraph::ArcMap<GRBVar>& x_a,
     ListDigraph& g,
@@ -347,6 +349,9 @@ vector<ListDigraph::Arc> arc_path_from_pli_sol(
     return path;
 }
 
+/*
+ * Gets nodes of path s-t (in order) from PLI solution.
+ */
 vector<ListDigraph::Node> node_path_from_pli_sol(
     ListDigraph::ArcMap<GRBVar>& x_a,
     ListDigraph& g,
@@ -370,48 +375,8 @@ vector<ListDigraph::Node> node_path_from_pli_sol(
 }
 
 /*
- * Simple heuristic for lower-bounding PLI: DFS from s to t
- */
-double _pli_cutoff(
-    ListDigraph& g, //directed graph
-    ListDigraph::NodeMap<bool>& visited, //prizes on nodes
-    ListDigraph::NodeMap<double>& prize, //prizes on nodes
-    ListDigraph::ArcMap<double>& cost, //costs of arcs
-    ListDigraph::Node& s, ListDigraph::Node& t) //source/dest nodes
-{
-    visited[s] = true;
-
-    if(s == t)
-        return prize[t];
-
-    double lb = -(numeric_limits<double>::max()/2);
-    for(ListDigraph::OutArcIt a(g, s); a!=INVALID; ++a)
-    {
-        ListDigraph::Node v = g.target(a);
-        if(!visited[v])
-        {
-            double v_lb = _pli_cutoff(g, visited, prize, cost, v, t);
-            lb = max(lb, v_lb - cost[a] + prize[v]);
-        }
-    }
-
-    return lb;
-}
-
-double pli_cutoff(
-    ListDigraph& g, //directed graph
-    ListDigraph::NodeMap<double>& prize, //prizes on nodes
-    ListDigraph::ArcMap<double>& cost, //costs of arcs
-    ListDigraph::Node& s, ListDigraph::Node& t) //source/dest nodes
-{
-    ListDigraph::NodeMap<bool> visited(g);
-    for(ListDigraph::NodeIt v(g); v!=INVALID; ++v)
-        visited[v] = false;
-    return max(0.0, _pli_cutoff(g, visited, prize, cost, s, t));
-}
-
-/*
- * PLI solution
+ * PLI solution.
+ * Uses GRASP heuristic for cutoff
  */
 int prize_collecting_st_path_pli(
     ListDigraph& g, //directed graph
@@ -496,7 +461,6 @@ int prize_collecting_st_path_pli(
     model.setObjective(obj, GRB_MAXIMIZE);
 
     //setting lower bound with simple heuristic
-    //LB = pli_cutoff(g, prize, cost, s, t);
     double _ignore;
     vector<ListDigraph::Node> heur_path;
     prize_collecting_st_path_heuristic(
@@ -504,36 +468,55 @@ int prize_collecting_st_path_pli(
 
     try
     {
-    //setting cutoff for lower bound
-    model.set(GRB_DoubleParam_Cutoff, LB*0.99);
+        //LET ME EXPLAIN why I set cutoff to 0.95*LB:
+        //Gurobi was throwing exception "CUTOFF" but the LB value
+        //was still LOWER than OPT. I think it was too close to OPT...
+        //I tried everything but did not suceed, so I had to do this.
+        model.set(GRB_DoubleParam_Cutoff, 0.95*LB);
 
-    //optimizing
-    model.optimize();
+        //optimizing
+        model.optimize();
 
-    if(model.get(GRB_IntAttr_Status) == GRB_INFEASIBLE)
-        return NO_SOL;
+        //setting bounds
+        UB = model.get(GRB_DoubleAttr_ObjBoundC);
 
-    //setting bounds
-    UB = model.get(GRB_DoubleAttr_ObjBoundC);
+        //debug
+        if(debug)
+            cout << "PLI: LB: " << LB << " | UB: " << UB << endl;
 
-    //debug
-    cout << "LB: " << LB << " | UB: " << UB << endl;
-
-    path = node_path_from_pli_sol(x_a, g, s, t);
-
-    //returning status
-    if(model.get(GRB_IntAttr_Status) == GRB_OPTIMAL)
-        return OPT_SOL;
-    else
-        return HEUR_SOL;
+        path = node_path_from_pli_sol(x_a, g, s, t);
     }
     catch(GRBException e)
     {
-        cout << "EITA\n";
+        if(model.get(GRB_IntAttr_Status) != GRB_INFEASIBLE &&
+            model.get(GRB_IntAttr_Status) != GRB_CUTOFF)
+            throw e;
+    }
+
+    //returning status
+    if(model.get(GRB_IntAttr_Status) == GRB_INFEASIBLE)
+    {
+        if(debug)
+            cout << "PLI: error: infeasible solution" << endl;
         return NO_SOL;
     }
+    else if(model.get(GRB_IntAttr_Status) == GRB_CUTOFF)
+    {
+        if(debug)
+            cout << "PLI: error: cutoff" << endl;
+        path = heur_path;
+        //I return OPT_SOL because of what was explained at line 475
+        return OPT_SOL;
+    }
+    else if(model.get(GRB_IntAttr_Status) == GRB_OPTIMAL)
+        return OPT_SOL;
+    else
+        return HEUR_SOL;
 }
 
+/*
+ * Transforms arc s-t (ordered) path into node version.
+ */
 vector<ListDigraph::Node> node_path_from_arc_path(
     const vector<ListDigraph::Arc>& arc_path,
     const ListDigraph& g)
@@ -556,16 +539,20 @@ vector<ListDigraph::Node> node_path_from_arc_path(
 }
 
 /*
- * Heuristic
+ * GRASP heuristic.
+ * Iterates getting initial solutions via a random-greedy DFS method, enhancing
+ * with local search that looks for better arcs to be used around each node.
+ * Stops either when reaches max num of iterations, or solution doesn't get
+ * better for a number of times, or time exceeds limit.
  */
 int prize_collecting_st_path_heuristic(
-    ListDigraph& g, //directed graph
-    ListDigraph::NodeMap<double>& prize, //prizes on nodes
-    ListDigraph::ArcMap<double> &cost, //costs of arcs
-    ListDigraph::Node s, ListDigraph::Node t, //source/dest nodes
-    std::vector<ListDigraph::Node> &path, //path from s to t
-    double &LB, double &UB, //lower/upper bounds
-    int tMax) //time limit
+    ListDigraph& g,
+    ListDigraph::NodeMap<double>& prize,
+    ListDigraph::ArcMap<double> &cost,
+    ListDigraph::Node s, ListDigraph::Node t,
+    std::vector<ListDigraph::Node> &path,
+    double &LB, double &UB,
+    int tMax)
 {
     vector<ListDigraph::Arc> best_sol;
     vector<ListDigraph::Arc> sol;
@@ -580,9 +567,19 @@ int prize_collecting_st_path_heuristic(
         //random greedy initial solution
         sol = rand_greedy_sol(g, prize, cost, s, t);
 
-        cout << "rand_greedy: " << path_cost(sol, g, prize, cost) << endl;
+        if(debug)
+            cout << "heuristic::iter " << i+1 << ": rand_greedy_sol value: "
+                << path_cost(sol, g, prize, cost) << endl;
         //local search optimization
         sol = local_search(sol, g, prize, cost, HEUR_MAX_N_LOC_SEARCH_ITS);
+
+        //break if timeout reached
+        if(double(clock() - start_t)/CLOCKS_PER_SEC > double(tMax))
+        {
+            if(debug)
+                cout << "heuristic::iter " << i+1 << ": timeout reached\n";
+            break;
+        }
 
         //updating best solution if there's one
         double sol_cost = path_cost(sol, g, prize, cost);
@@ -595,16 +592,18 @@ int prize_collecting_st_path_heuristic(
         else
             no_improve_count++;
 
-        //break if timeout
+        //break if timeout reached
         if(double(clock() - start_t)/CLOCKS_PER_SEC > double(tMax))
         {
-            cout << "TIMEOUT" << endl;
+            if(debug)
+                cout << "heuristic::iter " << i+1 << ": timeout reached\n";
             break;
         }
         //break if best solution did not improve for certain number of its
         if(no_improve_count > HEUR_MAX_N_ITS_NOIMPROVE)
         {
-            cout << "NO_IMPR_COUNT" << endl;
+            if(debug)
+                cout << "heuristic::iter " << i+1 << ": MAX_N_ITS_NOIMPROVE\n";
             break;
         }
     }
