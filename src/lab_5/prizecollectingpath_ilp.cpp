@@ -15,6 +15,9 @@
  * RA: 135582
  */
 
+//infinite
+#define INF (numeric_limits<double>::max()/2);
+
 //return codes
 enum
 {
@@ -26,8 +29,19 @@ enum
     HEUR_SOL=2
 };
 
+//type of pair arc and cost, calculated by function arc_cost
 typedef pair<ListDigraph::Arc, double> arc_cost_pair;
 
+//maximum number of iterations
+#define HEUR_MAX_N_ITS 128
+//maximum number of iterations allowed for best solution not to improve
+#define HEUR_MAX_N_ITS_NOIMPROVE 4
+//number of iterations of local search
+#define HEUR_MAX_N_LOC_SEARCH_ITS 3
+
+/*
+ * Cost of arc (u, v) = prize(v) - cost((u, v))
+ */
 double arc_cost(
     const ListDigraph::Arc& a,
     const ListDigraph& g,
@@ -37,6 +51,9 @@ double arc_cost(
     return prize[g.target(a)] - cost[a];
 }
 
+/*
+ * Makes pairs (arc, cost) for an adjacency list of node v
+ */
 vector<arc_cost_pair> make_arc_cost_pairs(
     const ListDigraph::Node& v,
     const ListDigraph& g,
@@ -49,6 +66,30 @@ vector<arc_cost_pair> make_arc_cost_pairs(
     return cands;
 }
 
+/*
+ * Computes cost of a given path s-t
+ */
+double path_cost(
+    const vector<ListDigraph::Arc>& path,
+    const ListDigraph& g,
+    const ListDigraph::NodeMap<double>& prize,
+    const ListDigraph::ArcMap<double>& cost)
+{
+    double p_cost = 0.0;
+
+    //first node s
+    if(path.size() > 0)
+        p_cost += prize[g.source(path[0])];
+    //adding costs including t
+    for(const auto& a: path)
+        p_cost += arc_cost(a, g, prize, cost);
+
+    return p_cost;
+}
+
+/*
+ * Comparator class of arcs and their costs calculated with arc_cost method
+ */
 class ArcCompar
 {
     public:
@@ -70,26 +111,19 @@ class ArcCompar
     const ListDigraph::ArcMap<double>& cost;
 };
 
-vector<ListDigraph::Arc> candidates_list(
-    ListDigraph& g,
-    ListDigraph::NodeMap<double>& prize, //prizes on nodes
-    ListDigraph::ArcMap<double>& cost, //costs of arcs
-    ListDigraph::Node v,
-    int k)
-{
-    vector<ListDigraph::Arc> cands;
-    for(ListDigraph::OutArcIt a(g, v); a!=INVALID; ++a)
-        cands.push_back(a);
-    sort(cands.begin(), cands.end(), ArcCompar(g, prize, cost));
-    return vector<ListDigraph::Arc>(cands.begin(), cands.begin()+k);
-}
-
+/*
+ * Makes random greedy choice of next arc for DFSjjj
+ * It performs DFS from s to t and the next node to be searched is selected
+ * by a random-greedy method.
+ */
 int rand_greedy_choice(
     const vector<arc_cost_pair>& arc_cost_pairs, int start_index)
 {
+    //random generators
     static uniform_real_distribution<double> unif(0.0, 1.0);
     static default_random_engine rand;
 
+    //roulette method for selecting
     double cost_sum = 0.0;
     for(int i=start_index; i<static_cast<int>(arc_cost_pairs.size()); i++)
         cost_sum += arc_cost_pairs[i].second;
@@ -168,7 +202,7 @@ vector<ListDigraph::Arc> rand_greedy_sol(
     return path;
 }
 
-vector<ListDigraph::Arc> local_search(
+vector<ListDigraph::Arc> _local_search(
     const vector<ListDigraph::Arc>& sol,
     const ListDigraph& g,
     const ListDigraph::NodeMap<double>& prize,
@@ -232,22 +266,29 @@ vector<ListDigraph::Arc> local_search(
     return path;
 }
 
-double path_cost(
-    const vector<ListDigraph::Arc>& path,
+vector<ListDigraph::Arc> local_search(
+    const vector<ListDigraph::Arc>& sol,
     const ListDigraph& g,
     const ListDigraph::NodeMap<double>& prize,
-    const ListDigraph::ArcMap<double>& cost)
+    const ListDigraph::ArcMap<double>& cost,
+    int n_its)
 {
-    double p_cost = 0.0;
+    double best_cost = -INF;
+    vector<ListDigraph::Arc> ls_sol = sol;
 
-    //first node s
-    if(path.size() > 0)
-        p_cost += prize[g.source(path[0])];
-    //adding costs including t
-    for(const auto& a: path)
-        p_cost += arc_cost(a, g, prize, cost);
+    for(int i=0; i<n_its; i++)
+    {
+        ls_sol = _local_search(ls_sol, g, prize, cost);
 
-    return p_cost;
+        double cst = path_cost(ls_sol, g, prize, cost);
+        if(cst > best_cost)
+            best_cost = cst;
+        else
+            break;
+        cout << "\tlocal_search: " << cst << endl;
+    }
+
+    return ls_sol;
 }
 
 /*void _dfs(
@@ -455,9 +496,16 @@ int prize_collecting_st_path_pli(
     model.setObjective(obj, GRB_MAXIMIZE);
 
     //setting lower bound with simple heuristic
-    LB = pli_cutoff(g, prize, cost, s, t);
+    //LB = pli_cutoff(g, prize, cost, s, t);
+    double _ignore;
+    vector<ListDigraph::Node> heur_path;
+    prize_collecting_st_path_heuristic(
+        g, prize, cost, s, t, heur_path, _ignore, LB, tMax);
+
+    try
+    {
     //setting cutoff for lower bound
-    model.set(GRB_DoubleParam_Cutoff, LB);
+    model.set(GRB_DoubleParam_Cutoff, LB*0.99);
 
     //optimizing
     model.optimize();
@@ -470,11 +518,6 @@ int prize_collecting_st_path_pli(
 
     //debug
     cout << "LB: " << LB << " | UB: " << UB << endl;
-    auto heur_path = rand_greedy_sol(g, prize, cost, s, t);
-    double heur_path_cost = path_cost(heur_path, g, prize, cost);
-    auto arc_path = arc_path_from_pli_sol(x_a, g, s, t);
-    double p_cost = path_cost(arc_path, g, prize, cost);
-    cout << "heur LB: " << heur_path_cost << " | path UB: " << p_cost << endl;
 
     path = node_path_from_pli_sol(x_a, g, s, t);
 
@@ -483,6 +526,12 @@ int prize_collecting_st_path_pli(
         return OPT_SOL;
     else
         return HEUR_SOL;
+    }
+    catch(GRBException e)
+    {
+        cout << "EITA\n";
+        return NO_SOL;
+    }
 }
 
 vector<ListDigraph::Node> node_path_from_arc_path(
@@ -518,22 +567,22 @@ int prize_collecting_st_path_heuristic(
     double &LB, double &UB, //lower/upper bounds
     int tMax) //time limit
 {
-    //best solution, solution
     vector<ListDigraph::Arc> best_sol;
     vector<ListDigraph::Arc> sol;
-    double best_sol_cost = -1.0;
+    double best_sol_cost = -INF;
 
-    //time counter
     clock_t start_t = clock();
 
-    int i=0;
-    while(i < 10)
+    int no_improve_count = 0;
+
+    for(int i=0; i<HEUR_MAX_N_ITS; i++)
     {
         //random greedy initial solution
         sol = rand_greedy_sol(g, prize, cost, s, t);
 
+        cout << "rand_greedy: " << path_cost(sol, g, prize, cost) << endl;
         //local search optimization
-        sol = local_search(sol, g, prize, cost);
+        sol = local_search(sol, g, prize, cost, HEUR_MAX_N_LOC_SEARCH_ITS);
 
         //updating best solution if there's one
         double sol_cost = path_cost(sol, g, prize, cost);
@@ -541,16 +590,27 @@ int prize_collecting_st_path_heuristic(
         {
             best_sol_cost = sol_cost;
             best_sol = sol;
+            no_improve_count = 0;
         }
+        else
+            no_improve_count++;
 
-        double elapsed_t = double(clock() - start_t)/CLOCKS_PER_SEC;
-        if(elapsed_t > double(tMax))
+        //break if timeout
+        if(double(clock() - start_t)/CLOCKS_PER_SEC > double(tMax))
+        {
+            cout << "TIMEOUT" << endl;
             break;
-        i++;
+        }
+        //break if best solution did not improve for certain number of its
+        if(no_improve_count > HEUR_MAX_N_ITS_NOIMPROVE)
+        {
+            cout << "NO_IMPR_COUNT" << endl;
+            break;
+        }
     }
 
     //setting lower/upper bounds
-    LB = 0;
+    LB = 0.0;
     UB = best_sol_cost;
 
     //setting path
