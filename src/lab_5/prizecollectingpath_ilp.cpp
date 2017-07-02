@@ -8,6 +8,7 @@
 #include <limits>
 #include <random>
 #include <algorithm>
+#include <ctime>
 
 /*
  * Nome: Erik de Godoy Perillo
@@ -27,7 +28,7 @@ enum
 
 typedef pair<ListDigraph::Arc, double> arc_cost_pair;
 
-inline double arc_cost(
+double arc_cost(
     const ListDigraph::Arc& a,
     const ListDigraph& g,
     const ListDigraph::NodeMap<double>& prize,
@@ -93,6 +94,9 @@ int rand_greedy_choice(
     for(int i=start_index; i<static_cast<int>(arc_cost_pairs.size()); i++)
         cost_sum += arc_cost_pairs[i].second;
 
+    if(cost_sum == 0)
+        return start_index;
+
     double cum_prob = 0.0;
     double r = unif(rand);
     for(int i=start_index; i<static_cast<int>(arc_cost_pairs.size()); i++)
@@ -102,7 +106,7 @@ int rand_greedy_choice(
             return i;
     }
 
-    return -1;
+    return start_index;
 }
 
 /*
@@ -160,6 +164,70 @@ vector<ListDigraph::Arc> rand_greedy_sol(
     vector<ListDigraph::Arc> path;
     _rand_greedy_sol(g, visited, prize, cost, path, s, t);
     reverse(path.begin(), path.end());
+
+    return path;
+}
+
+vector<ListDigraph::Arc> local_search(
+    const vector<ListDigraph::Arc>& sol,
+    const ListDigraph& g,
+    const ListDigraph::NodeMap<double>& prize,
+    const ListDigraph::ArcMap<double>& cost)
+{
+    ListDigraph::NodeMap<bool> used(g);
+    for(ListDigraph::NodeIt v(g); v!=INVALID; ++v)
+        used[v] = false;
+    for(const auto& a: sol)
+    {
+        ListDigraph::Node u = g.source(a);
+        ListDigraph::Node v = g.target(a);
+        used[u] = true;
+        used[v] = true;
+    }
+
+    vector<ListDigraph::Arc> path;
+
+    for(const auto& a: sol)
+    {
+        double best_cost = arc_cost(a, g, prize, cost);
+        ListDigraph::Arc fst = a;
+        ListDigraph::Arc snd = a;
+        ListDigraph::Node u = g.source(a);
+        ListDigraph::Node v = g.target(a);
+
+        for(ListDigraph::OutArcIt au(g, u); au!=INVALID; ++au)
+        {
+            ListDigraph::Node w = g.target(au);
+
+            if(used[w])
+                continue;
+
+            for(ListDigraph::OutArcIt aw(g, w); aw!=INVALID; ++aw)
+            {
+                ListDigraph::Node x = g.target(aw);
+
+                if(x != v)
+                    continue;
+
+                double cst = arc_cost(au, g, prize, cost)
+                    + arc_cost(aw, g, prize, cost);
+                if(cst > best_cost)
+                {
+                    fst = au;
+                    snd = aw;
+                    best_cost = cst;
+                }
+            }
+        }
+
+        path.push_back(fst);
+        if(fst != snd)
+        {
+            ListDigraph::Node u = g.source(snd);
+            used[u] = true;
+            path.push_back(snd);
+        }
+    }
 
     return path;
 }
@@ -417,6 +485,27 @@ int prize_collecting_st_path_pli(
         return HEUR_SOL;
 }
 
+vector<ListDigraph::Node> node_path_from_arc_path(
+    const vector<ListDigraph::Arc>& arc_path,
+    const ListDigraph& g)
+{
+    vector<ListDigraph::Node> path;
+
+    for(int i=0; i<static_cast<int>(arc_path.size()); i++)
+    {
+        if(i == 0)
+        {
+            ListDigraph::Node u = g.source(arc_path[i]);
+            path.push_back(u);
+        }
+
+        ListDigraph::Node v = g.target(arc_path[i]);
+        path.push_back(v);
+    }
+
+    return path;
+}
+
 /*
  * Heuristic
  */
@@ -429,5 +518,43 @@ int prize_collecting_st_path_heuristic(
     double &LB, double &UB, //lower/upper bounds
     int tMax) //time limit
 {
-	return 0;
+    //best solution, solution
+    vector<ListDigraph::Arc> best_sol;
+    vector<ListDigraph::Arc> sol;
+    double best_sol_cost = -1.0;
+
+    //time counter
+    clock_t start_t = clock();
+
+    int i=0;
+    while(i < 10)
+    {
+        //random greedy initial solution
+        sol = rand_greedy_sol(g, prize, cost, s, t);
+
+        //local search optimization
+        sol = local_search(sol, g, prize, cost);
+
+        //updating best solution if there's one
+        double sol_cost = path_cost(sol, g, prize, cost);
+        if(sol_cost >= best_sol_cost)
+        {
+            best_sol_cost = sol_cost;
+            best_sol = sol;
+        }
+
+        double elapsed_t = double(clock() - start_t)/CLOCKS_PER_SEC;
+        if(elapsed_t > double(tMax))
+            break;
+        i++;
+    }
+
+    //setting lower/upper bounds
+    LB = 0;
+    UB = best_sol_cost;
+
+    //setting path
+    path = node_path_from_arc_path(best_sol, g);
+
+	return HEUR_SOL;
 }
