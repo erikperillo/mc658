@@ -48,8 +48,11 @@ um conjunto de roteadores $R$ e tamanho $|R| = n_2$
 com limites de banda $l_r$ para todo $r \in R$ e
 um conjunto de possíveis conexões $X$ com tamanho $|X| = m$
 com custo por unidade de banda $c_x$ para todo $x \in X$.
+Pode-se imaginar a instância como um grafo não direcionado
+$G = (V, E)$, com $V = T \cup R$ e $E = X$.
 
-Queremos minimizar o custo total das ligações:
+Queremos encontrar os valores $x \in X$ de modo a
+minimizar o custo total das ligações:
 $$\ttt{min} z = \sum\nolimits_{x \in X}xc_x$$
 Sujeito a:
 \begin{itemize}
@@ -62,6 +65,23 @@ Sujeito a:
     \item Os valores são não-negativos:
         $$x \ge 0, ~\forall~x \in X$$
 \end{itemize}
+
+\section{Implementação}
+A implementação foi feita com o uso do gurobi (versão \ttt{7.0.2}) e lemon.
+
+\section{Avaliação do modelo proposto}
+O modelo implementado foi testado primeiramente em arquivos de entrada
+fornecidos. Os nomes do arquivo estão no formato
+\ttt{<num\_terminais>\_<num\_roteadores>.in}.
+Nota-se que, para um limite de 15 segundos, o programa chegou à solução ótima
+para todas as entradas com folga de tempo, como mostra a tabela a seguir.
+
+\input{table_basic_input.tex}
+
+Foram geradas outras entradas com tamanhos entre 1000 e 2000, os resultados
+encontram-se na tabela a seguir.
+
+\input{table_big_input.tex}
 
 \end{multicols}
 

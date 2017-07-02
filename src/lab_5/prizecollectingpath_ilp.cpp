@@ -460,11 +460,14 @@ int prize_collecting_st_path_pli(
         obj -= x_a[a]*cost[a];
     model.setObjective(obj, GRB_MAXIMIZE);
 
-    //setting lower bound with simple heuristic
+    //setting lower bound with metaheuristic
     double _ignore;
     vector<ListDigraph::Node> heur_path;
     prize_collecting_st_path_heuristic(
         g, prize, cost, s, t, heur_path, _ignore, LB, tMax);
+
+    //initial upper bound
+    UB = LB;
 
     try
     {
@@ -477,21 +480,22 @@ int prize_collecting_st_path_pli(
         //optimizing
         model.optimize();
 
-        //setting bounds
-        UB = model.get(GRB_DoubleAttr_ObjBoundC);
-
-        //debug
-        if(debug)
-            cout << "PLI: LB: " << LB << " | UB: " << UB << endl;
-
+        //setting path
         path = node_path_from_pli_sol(x_a, g, s, t);
     }
     catch(GRBException e)
     {
         if(model.get(GRB_IntAttr_Status) != GRB_INFEASIBLE &&
-            model.get(GRB_IntAttr_Status) != GRB_CUTOFF)
+            model.get(GRB_IntAttr_Status) != GRB_CUTOFF &&
+            model.get(GRB_IntAttr_Status) != GRB_TIME_LIMIT)
             throw e;
     }
+
+    //updating upper bound
+    UB = max(LB, model.get(GRB_DoubleAttr_ObjVal));
+    if(debug)
+        //cout << "PLI: LB: " << LB << " | UB: " << UB << endl;
+        cout << "PLI: lb, ub:\n: " << LB << "," << UB << endl;
 
     //returning status
     if(model.get(GRB_IntAttr_Status) == GRB_INFEASIBLE)
@@ -505,13 +509,17 @@ int prize_collecting_st_path_pli(
         if(debug)
             cout << "PLI: error: cutoff" << endl;
         path = heur_path;
-        //I return OPT_SOL because of what was explained at line 475
+        //I return OPT_SOL because of what I explain at line 478
         return OPT_SOL;
     }
     else if(model.get(GRB_IntAttr_Status) == GRB_OPTIMAL)
         return OPT_SOL;
     else
+    {
+        if(LB >= UB)
+            path = heur_path;
         return HEUR_SOL;
+    }
 }
 
 /*
@@ -567,22 +575,28 @@ int prize_collecting_st_path_heuristic(
         //random greedy initial solution
         sol = rand_greedy_sol(g, prize, cost, s, t);
 
+        //initial solution cost
+        double sol_cost = path_cost(sol, g, prize, cost);
         if(debug)
             cout << "heuristic::iter " << i+1 << ": rand_greedy_sol value: "
-                << path_cost(sol, g, prize, cost) << endl;
-        //local search optimization
-        sol = local_search(sol, g, prize, cost, HEUR_MAX_N_LOC_SEARCH_ITS);
+                << sol_cost << endl;
 
-        //break if timeout reached
+        //break if timeout already reached
         if(double(clock() - start_t)/CLOCKS_PER_SEC > double(tMax))
         {
             if(debug)
                 cout << "heuristic::iter " << i+1 << ": timeout reached\n";
+            best_sol_cost = sol_cost;
             break;
         }
 
+        //local search optimization
+        sol = local_search(sol, g, prize, cost, HEUR_MAX_N_LOC_SEARCH_ITS);
+
+        //solution cost
+        sol_cost = path_cost(sol, g, prize, cost);
+
         //updating best solution if there's one
-        double sol_cost = path_cost(sol, g, prize, cost);
         if(sol_cost >= best_sol_cost)
         {
             best_sol_cost = sol_cost;

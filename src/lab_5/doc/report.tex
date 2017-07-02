@@ -1,0 +1,179 @@
+\documentclass[7pt]{article}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage[brazilian]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[backend=biber]{biblatex}
+\usepackage{csquotes}
+%\usepackage{docmute}
+\usepackage{array}
+\usepackage{multicol}
+\usepackage[bindingoffset=0.0in,%
+            left=0.9in,right=0.9in,top=1.0in,bottom=1.0in,%
+            voffset=0in,footskip=1.5in]{geometry}
+\usepackage{algorithm}
+\usepackage{titling}
+\usepackage[noend]{algpseudocode}
+\usepackage[T1]{fontenc}
+
+\addbibresource{report.bib}
+
+\newcommand{\fromeng}[1]{\footnote{do inglês: \textit{#1}}}
+\newcommand{\tit}[1]{\textit{#1}}
+\newcommand{\tbf}[1]{\textbf{#1}}
+\newcommand{\ttt}[1]{\texttt{#1}}
+
+\begin{document}
+
+\author{\small Erik Perillo, RA135582}
+\date{\small \today}
+\title{\vspace{-2cm}%
+	{\small MC658 - Projeto e análise de algoritmos III - Unicamp}\\
+    {\Large \tbf{Laboratório 5 -- s-t Caminhos com Coleta de Prêmios}}}
+%\subtitle{Lel}
+\maketitle\vspace{-0.5cm}
+
+\makeatletter
+\def\BState{\State\hskip-\ALG@thistlm}
+\makeatother
+
+\begin{multicols}{2}
+
+\section{Problema}
+O problema consiste em, dado um grafo orientado $G = (N, A)$, encontrar o
+melhor caminho $P = (N_P, A_P)$ de $s$ a $t$ que maximize uma certa
+função de custo.
+
+\section{Metaheurística}
+De modo a obter um bom \tit{lower bound} para o problema, foi desenvolvida
+uma metaheurística baseada em
+\tit{GRASP - Greedy Randomized Adaptive Search Procedure}.
+Os pseudo-códigos são descritos a seguir.
+\end{multicols}
+
+\begin{algorithm}
+\caption{}\label{grasp}
+\begin{algorithmic}[1]
+    \Procedure{GRASP-HEURISTICA}{G, s, t, prize, cost}
+    \State $S \gets \emptyset$
+    \State $S_+ \gets \emptyset$
+    \While {not $timeout$ and not $limit\_its$ and not $stuck\_in\_local\_opt$}
+        \State $S \gets$ RANDOM-GREEDY-SOL-DFS(G, s, t, prize, cost)
+        \State $S \gets$ LOCAL-SEARCH(S)
+        \If{$cost(S) \ge cost(S_+)$}
+            \State $S_+ \gets S$
+        \EndIf
+	\EndFor
+    \Return $S_+$
+    \EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+\caption{}\label{random-dfs}
+\begin{algorithmic}[1]
+    \Procedure{RANDOM-GREEDY-SOL-DFS}{S, s, t, prize, cost}
+    \State set $s$ as visited
+    \If{$s = t$}
+        \State return TRUE
+    \EndIf
+    \State $A \gets Adj(s)$
+    \While {$A \neq \emptyset$}
+        \State select $(s, v)$ with probability proportional to
+            $prize(s) - cost((s,v))$
+        \State $A \gets A - \{(s, v)\}$
+        \If{not visited($v$) and RANDOM-GREEDY-SOL-DFS(S, v, t, prize, cost)}
+            \State $S \gets S \cup {(s, v)}$
+            \State \Return TRUE
+        \EndIf
+    \EndWhile
+    \State \Return FALSE
+    \EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+\caption{}\label{local}
+\begin{algorithmic}[1]
+    \Procedure{LOCAL-SEARCH}{S, prize, cost}
+    \While {not $timeout$ and not $limit\_its$ and not $stuck\_in\_local\_opt$}
+    \For {$(u, v) \in S$}
+        \If{exists $(u, w)$ and $(w, v)$ with $w \notin S$}
+            \If{$prize(w) - cost((u,w),(w,v)) \ge -cost(u, v)$}
+                \State $S \gets S \cup{\{(u, w), (w, v)\}} - \{(u, v)\}$
+            \EndIf
+        \EndIf
+	\EndFor
+    \EndWhile
+    \Return $S$
+    \EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\begin{multicols}{2}
+O algoritmo~\ref{grasp} é a metaheurística principal:
+enquanto o critério de parada não é verdade,
+ele busca uma solução gulosa-probabilística inicial
+e a refina com busca local.
+O algoritmo~\ref{random-dfs} explica a ideia da busca probabilística gulosa:
+Faz-se o caminho em DFS de $s$ a $t$, escolhendo nós/arcos com probabilidades
+proporcionais a seus custos: quanto maior, maior a chance de escolher.
+O algoritmo~\ref{local} explica a ideia da busca local:
+para cada arco da solução aleatória-gulosa, ele procura outros dois arcos
+que formam um caminho entre os nós do arco original mas com custo melhor.
+Ele repete isso no máximo 3 vezes.
+A heurística obteve resultados sempre muito próximos do \tit{upper bound}.
+
+\section{Solução exata com Programação Linear Inteira}
+Seja $x_v$ a variável binária que é $1$ se o nó $v$ está na solução e
+$0$ caso contrário.
+Seja $x_a$ a variável binária que é $1$ se o arco $a$ está na solução e
+$0$ caso contrário.
+Seja $\pi_v$ os prêmios de cada nó $v$ e $c_a$ os custos de cada arco $a$.
+
+Queremos encontrar o caminho de $s$ a $t$ $P = (N_P, A_P)$ que maximize:
+$$\ttt{max} z = \sum\nolimits_{v \in N}x_v \pi_v
+    - \sum\nolimits_{a \in A}x_a c_a$$
+Sujeito a:
+\begin{itemize}
+    \item Do nó $s$, só tem um arco de saída e nenhum de entrada:
+        $$\sum\nolimits_{x_a \in \delta_+(s)}x_a = 1$$
+        $$\sum\nolimits_{x_a \in \delta_-(s)}x_a = 0$$
+
+    \item Do nó $t$, só tem um arco de entrada e nenhum de saída:
+        $$\sum\nolimits_{x_a \in \delta_+(t)}x_a = 0$$
+        $$\sum\nolimits_{x_a \in \delta_-(t)}x_a = 1$$
+
+    \item Um nó que não seja $s$ e $t$ é selecionado se e somente se ele tem
+        exatamente um arco de entrada e um de saída:
+        $$\sum\nolimits_{x_a \in \delta_+(v)}x_a = x_v, ~\forall~v \in N -
+            \{s, t\}$$
+        $$\sum\nolimits_{x_a \in \delta_-(v)}x_a = x_v, ~\forall~v \in N -
+            \{s, t\}$$
+
+    \item Restrição de integralidade:
+        $$x_a \in \{0, 1\}, ~\forall~x_a \in A$$
+        $$x_v \in \{0, 1\}, ~\forall~x_v \in N$$
+\end{itemize}
+
+\section{Implementação}
+A implementação foi feita com o uso do gurobi (versão \ttt{7.0.2}) e lemon.
+
+\section{Avaliação do modelo proposto}
+Na tabela a seguir, temos os valores para alguns arquivos de entrada.
+O algoritmo exato recebia o \tit{lower bound} obtido pela heurística
+como \tit{cutoff}.
+A heurística mostrou-se muito eficiente, obtendo \tit{lower bounds}
+muito próximos do valor ótimo.
+O valor ótimo foi obtido em quase todos os casos.
+No caso em que o OPT não foi obtido, a heurística obteve um
+\tit{lower bound} muito próximo do valor ótimo (3.00684e+09).
+O arquivo \ttt{100000\_700000.in} não pôde ser executado na máquina dos
+testes pois ela não tinha memória suficiente.
+\end{multicols}
+
+\input{table_basic_input.tex}
+
+\end{document}

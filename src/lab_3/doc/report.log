@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016/Arch Linux) (preloaded format=pdflatex 2017.5.15)  28 MAY 2017 18:46
+This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016/Arch Linux) (preloaded format=pdflatex 2017.5.15)  28 MAY 2017 21:44
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -892,17 +892,37 @@ LaTeX Font Info:    Try loading font information for U+msb on input line 36.
  (/usr/share/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
-LaTeX Font Info:    Try loading font information for T1+cmtt on input line 53.
+LaTeX Font Info:    Try loading font information for T1+cmtt on input line 56.
  (/usr/share/texmf-dist/tex/latex/base/t1cmtt.fd
 File: t1cmtt.fd 2014/09/29 v2.5h Standard LaTeX font definitions
 )
-LaTeX Font Info:    Try loading font information for OMS+cmr on input line 56.
+LaTeX Font Info:    Try loading font information for OMS+cmr on input line 59.
  (/usr/share/texmf-dist/tex/latex/base/omscmr.fd
 File: omscmr.fd 2014/09/29 v2.5h Standard LaTeX font definitions
 )
 LaTeX Font Info:    Font shape `OMS/cmr/m/n' in size <10> not available
-(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 56.
- [1
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 59.
+
+Underfull \hbox (badness 10000) in paragraph at lines 73--78
+\T1/cmr/m/n/10 O mo-delo im-ple-men-tado foi tes-tado pri-mei-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 73--78
+\T1/cmr/m/n/10 ra-mente em ar-qui-vos de en-trada for-ne-ci-
+ []
+
+(./table_basic_input.tex
+Overfull \hbox (25.19066pt too wide) in paragraph at lines 4--17
+ [][] 
+ []
+
+) (./table_big_input.tex
+Overfull \hbox (30.18944pt too wide) in paragraph at lines 4--37
+ [][] 
+ []
+
+) [1
 
 {/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}] (./report.aux)
 Package logreq Info: Writing requests to 'report.run.xml'.
@@ -910,15 +930,15 @@ Package logreq Info: Writing requests to 'report.run.xml'.
 
  ) 
 Here is how much of TeX's memory you used:
- 11118 strings out of 493013
- 177419 string characters out of 6139317
- 631154 words of memory out of 5000000
- 14489 multiletter control sequences out of 15000+600000
+ 11126 strings out of 493013
+ 177558 string characters out of 6139317
+ 655154 words of memory out of 5000000
+ 14491 multiletter control sequences out of 15000+600000
  17060 words of font info for 51 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  35i,7n,30p,816b,1390s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/share/texmf-dist/fonts/enc/dvips/cm-super/cm-super-t1.enc}</usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb></usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/share/texmf-dist/fonts/type1/public/cm-super/sfbx1440.pfb></usr/share/texmf-dist/fonts/type1/public/cm-super/sfrm0900.pfb></usr/share/texmf-dist/fonts/type1/public/cm-super/sfrm1000.pfb></usr/share/texmf-dist/fonts/type1/public/cm-super/sftt1000.pfb>
-Output written on report.pdf (1 page, 127725 bytes).
+Output written on report.pdf (1 page, 142458 bytes).
 PDF statistics:
  53 PDF objects out of 1000 (max. 8388607)
  38 compressed objects within 1 object stream
