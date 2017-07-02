@@ -46,9 +46,9 @@ O problema consiste em, dado um grafo orientado $G = (N, A)$, encontrar o
 melhor caminho $P = (N_P, A_P)$ de $s$ a $t$ que maximize uma certa
 função de custo.
 
-\section{Metaheurística}
+\section{Heurística}
 De modo a obter um bom \tit{lower bound} para o problema, foi desenvolvida
-uma metaheurística baseada em
+uma heurística baseada na metaheurística
 \tit{GRASP - Greedy Randomized Adaptive Search Procedure}.
 Os pseudo-códigos são descritos a seguir.
 \end{multicols}
@@ -60,8 +60,8 @@ Os pseudo-códigos são descritos a seguir.
     \State $S \gets \emptyset$
     \State $S_+ \gets \emptyset$
     \While {not $timeout$ and not $limit\_its$ and not $stuck\_in\_local\_opt$}
-        \State $S \gets$ RANDOM-GREEDY-SOL-DFS(G, s, t, prize, cost)
-        \State $S \gets$ LOCAL-SEARCH(S)
+        \State $S \gets$ RANDOM-GREEDY-SOL-DFS(S, s, t, prize, cost)
+        \State $S \gets$ LOCAL-SEARCH(S, G, prize, cost)
         \If{$cost(S) \ge cost(S_+)$}
             \State $S_+ \gets S$
         \EndIf
@@ -97,14 +97,14 @@ Os pseudo-códigos são descritos a seguir.
 \begin{algorithm}
 \caption{}\label{local}
 \begin{algorithmic}[1]
-    \Procedure{LOCAL-SEARCH}{S, prize, cost}
+    \Procedure{LOCAL-SEARCH}{S, G, prize, cost}
     \While {not $timeout$ and not $limit\_its$ and not $stuck\_in\_local\_opt$}
     \For {$(u, v) \in S$}
-        \If{exists $(u, w)$ and $(w, v)$ with $w \notin S$}
+        \For{$(u, w) \in A(G)$ and $(w, v) \in A(G)$ with $w \notin S$}
             \If{$prize(w) - cost((u,w),(w,v)) \ge -cost(u, v)$}
                 \State $S \gets S \cup{\{(u, w), (w, v)\}} - \{(u, v)\}$
             \EndIf
-        \EndIf
+        \EndFor
 	\EndFor
     \EndWhile
     \Return $S$

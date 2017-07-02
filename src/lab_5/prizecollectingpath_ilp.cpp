@@ -40,7 +40,7 @@ typedef pair<ListDigraph::Arc, double> arc_cost_pair;
 #define HEUR_MAX_N_LOC_SEARCH_ITS 3
 
 //print debug messages iff true
-const bool debug = true;
+const bool debug = false;
 
 /*
  * Cost of arc (u, v) = prize(v) - cost((u, v))
